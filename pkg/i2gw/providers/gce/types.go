@@ -16,10 +16,26 @@ limitations under the License.
 
 package gce
 
+import "k8s.io/apimachinery/pkg/runtime/schema"
+
 const (
 	gceIngressClass      = "gce"
 	gceL7ILBIngressClass = "gce-internal"
 
 	gceL7GlobalExternalManagedGatewayClass = "gke-l7-global-external-managed"
 	gceL7RegionalInternalGatewayClass      = "gke-l7-rilb"
+)
+
+var (
+	backendConfigGVK = schema.GroupVersionKind{
+		Group:   "cloud.google.com/v1",
+		Version: "v1",
+		Kind:    "BackendConfig",
+	}
+
+	betaBackendConfigGVK = schema.GroupVersionKind{
+		Group:   "cloud.google.com/v1",
+		Version: "v1beta1",
+		Kind:    "BackendConfig",
+	}
 )
