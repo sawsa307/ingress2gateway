@@ -76,3 +76,10 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 
 	return gatewayResources, errs
 }
+
+func (c *converter) inputToIR(storage *storage) gceIR {
+	var ir gceIR
+	ir.gceServiceIRs = toServiceIR(storage)
+
+	return ir
+}
