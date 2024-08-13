@@ -115,22 +115,22 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 
 	for _, r := range gatewayResources {
 		resourceCount += len(r.Gateways)
-		for _, gateway := range r.Gateways {
-			gateway := gateway
-			err := pr.resourcePrinter.PrintObj(&gateway, os.Stdout)
+		for _, gatewayContext := range r.Gateways {
+			gatewayContext := gatewayContext
+			err := pr.resourcePrinter.PrintObj(&gatewayContext.Gateway, os.Stdout)
 			if err != nil {
-				fmt.Printf("# Error printing %s Gateway: %v\n", gateway.Name, err)
+				fmt.Printf("# Error printing %s Gateway: %v\n", gatewayContext.Gateway.Name, err)
 			}
 		}
 	}
 
 	for _, r := range gatewayResources {
 		resourceCount += len(r.HTTPRoutes)
-		for _, httpRoute := range r.HTTPRoutes {
-			httpRoute := httpRoute
-			err := pr.resourcePrinter.PrintObj(&httpRoute, os.Stdout)
+		for _, routeContext := range r.HTTPRoutes {
+			routeContext := routeContext
+			err := pr.resourcePrinter.PrintObj(&routeContext.HTTPRoute, os.Stdout)
 			if err != nil {
-				fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoute.Name, err)
+				fmt.Printf("# Error printing %s HTTPRoute: %v\n", routeContext.HTTPRoute.Name, err)
 			}
 		}
 	}

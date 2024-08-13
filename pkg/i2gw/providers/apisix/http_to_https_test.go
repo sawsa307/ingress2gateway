@@ -259,8 +259,10 @@ func Test_httpToHttpsFeature(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ingresses := []networkingv1.Ingress{tc.ingress}
 			gatewayResources := &i2gw.GatewayResources{
-				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
-					{Name: tc.expectedHTTPRoute.Name, Namespace: tc.expectedHTTPRoute.Namespace}: *tc.initialHTTPRoute,
+				HTTPRoutes: map[types.NamespacedName]i2gw.HTTPRouteContext{
+					{Name: tc.expectedHTTPRoute.Name, Namespace: tc.expectedHTTPRoute.Namespace}: i2gw.HTTPRouteContext{
+						HTTPRoute: *tc.initialHTTPRoute,
+					},
 				},
 			}
 
@@ -277,7 +279,7 @@ func Test_httpToHttpsFeature(t *testing.T) {
 				t.Errorf("HTTPRoute not found: %v", key)
 			}
 
-			if diff := cmp.Diff(*tc.expectedHTTPRoute, actualHTTPRoute); diff != "" {
+			if diff := cmp.Diff(*tc.expectedHTTPRoute, actualHTTPRoute.HTTPRoute); diff != "" {
 				t.Errorf("Unexpected HTTPRoute resource found, \n want: %+v\n got: %+v\n diff (-want +got):\n%s", *tc.expectedHTTPRoute, actualHTTPRoute, diff)
 			}
 		})

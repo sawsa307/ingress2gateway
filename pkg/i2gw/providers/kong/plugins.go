@@ -46,7 +46,7 @@ func pluginsFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw.Gat
 				return field.ErrorList{field.InternalError(nil, errors.New("HTTPRoute does not exist - this should never happen"))}
 			}
 			filters := parsePluginsAnnotation(rule.Ingress.Annotations)
-			patchHTTPRoutePlugins(&httpRoute, filters)
+			patchHTTPRoutePlugins(&httpRoute.HTTPRoute, filters)
 		}
 	}
 	return nil

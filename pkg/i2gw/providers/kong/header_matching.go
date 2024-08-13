@@ -49,7 +49,7 @@ func headerMatchingFeature(ingresses []networkingv1.Ingress, gatewayResources *i
 				return field.ErrorList{field.InternalError(nil, fmt.Errorf("HTTPRoute does not exist - this should never happen"))}
 			}
 
-			patchHTTPRouteHeaderMatching(&httpRoute, headerskeys, headersValues)
+			patchHTTPRouteHeaderMatching(&httpRoute.HTTPRoute, headerskeys, headersValues)
 		}
 
 	}

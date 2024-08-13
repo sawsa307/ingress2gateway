@@ -40,13 +40,13 @@ func setGCEGatewayClasses(ingresses []networkingv1.Ingress, gatewayResources *i2
 	//      mapped to `gke-l7-global-external-managed`.
 	for _, ingress := range ingresses {
 		gwKey := types.NamespacedName{Namespace: ingress.Namespace, Name: common.GetIngressClass(ingress)}
-		existingGateway := gatewayResources.Gateways[gwKey]
+		existingGateway := gatewayResources.Gateways[gwKey].Gateway
 
 		newGateway, err := setGCEGatewayClass(ingress, existingGateway)
 		if err != nil {
 			errs = append(errs, err)
 		}
-		gatewayResources.Gateways[gwKey] = newGateway
+		gatewayResources.Gateways[gwKey] = i2gw.GatewayContext{Gateway: newGateway, Extension: gatewayResources.Gateways[gwKey].Extension}
 	}
 	if len(errs) > 0 {
 		return errs

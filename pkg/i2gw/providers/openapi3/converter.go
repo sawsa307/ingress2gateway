@@ -95,8 +95,8 @@ var _ Converter = &converter{}
 
 func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources := i2gw.GatewayResources{
-		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
-		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
+		Gateways:        make(map[types.NamespacedName]i2gw.GatewayContext),
+		HTTPRoutes:      make(map[types.NamespacedName]i2gw.HTTPRouteContext),
 		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}
 
@@ -119,7 +119,7 @@ func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.Error
 		// convert the spec to Gateway API resources
 		httpRoutes, gateways := c.toHTTPRoutesAndGateways(spec, resourcesNamePrefix, errors)
 		for _, httpRoute := range httpRoutes {
-			gatewayResources.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = httpRoute
+			gatewayResources.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = i2gw.HTTPRouteContext{HTTPRoute: httpRoute}
 		}
 
 		// build reference grants for the resources
@@ -127,7 +127,7 @@ func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.Error
 			gatewayResources.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
 		}
 		for _, gateway := range gateways {
-			gatewayResources.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = gateway
+			gatewayResources.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = i2gw.GatewayContext{Gateway: gateway}
 			if referenceGrant := c.buildGatewayTLSSecretReferenceGrant(gateway); referenceGrant != nil {
 				gatewayResources.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
 			}

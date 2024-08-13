@@ -50,7 +50,7 @@ func methodMatchingFeature(ingresses []networkingv1.Ingress, gatewayResources *i
 			if len(errs) != 0 {
 				return errs
 			}
-			patchHTTPRouteMethodMatching(&httpRoute, methods)
+			patchHTTPRouteMethodMatching(&httpRoute.HTTPRoute, methods)
 		}
 	}
 	return nil

@@ -147,9 +147,9 @@ func GetSupportedProviders() []string {
 // This behavior is likely to change after https://github.com/kubernetes-sigs/gateway-api/pull/1863 takes place.
 func MergeGatewayResources(gatewayResources ...GatewayResources) (GatewayResources, field.ErrorList) {
 	mergedGatewayResources := GatewayResources{
-		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
+		Gateways:        make(map[types.NamespacedName]GatewayContext),
 		GatewayClasses:  make(map[types.NamespacedName]gatewayv1.GatewayClass),
-		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
+		HTTPRoutes:      make(map[types.NamespacedName]HTTPRouteContext),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
@@ -171,27 +171,27 @@ func MergeGatewayResources(gatewayResources ...GatewayResources) (GatewayResourc
 	return mergedGatewayResources, errs
 }
 
-func mergeGateways(gatewaResources []GatewayResources) (map[types.NamespacedName]gatewayv1.Gateway, field.ErrorList) {
-	newGateways := map[types.NamespacedName]gatewayv1.Gateway{}
+func mergeGateways(gatewaResources []GatewayResources) (map[types.NamespacedName]GatewayContext, field.ErrorList) {
+	newGateways := map[types.NamespacedName]GatewayContext{}
 	errs := field.ErrorList{}
 
 	for _, gr := range gatewaResources {
-		for _, g := range gr.Gateways {
-			nn := types.NamespacedName{Namespace: g.Namespace, Name: g.Name}
-			if existingGateway, ok := newGateways[nn]; ok {
-				g.Spec.Listeners = append(g.Spec.Listeners, existingGateway.Spec.Listeners...)
-				g.Spec.Addresses = append(g.Spec.Addresses, existingGateway.Spec.Addresses...)
+		for _, gwContext := range gr.Gateways {
+			nn := types.NamespacedName{Namespace: gwContext.Gateway.Namespace, Name: gwContext.Gateway.Name}
+			if existingGatewayContext, ok := newGateways[nn]; ok {
+				gwContext.Gateway.Spec.Listeners = append(gwContext.Gateway.Spec.Listeners, existingGatewayContext.Gateway.Spec.Listeners...)
+				gwContext.Gateway.Spec.Addresses = append(gwContext.Gateway.Spec.Addresses, existingGatewayContext.Gateway.Spec.Addresses...)
 			}
-			newGateways[nn] = g
+			newGateways[nn] = GatewayContext{Gateway: gwContext.Gateway}
 			// 64 is the maximum number of listeners a Gateway can have
-			if len(g.Spec.Listeners) > 64 {
+			if len(gwContext.Gateway.Spec.Listeners) > 64 {
 				fieldPath := field.NewPath(fmt.Sprintf("%s/%s", nn.Namespace, nn.Name)).Child("spec").Child("listeners")
-				errs = append(errs, field.Invalid(fieldPath, g, "error while merging gateway listeners: a gateway cannot have more than 64 listeners"))
+				errs = append(errs, field.Invalid(fieldPath, gwContext.Gateway, "error while merging gateway listeners: a gateway cannot have more than 64 listeners"))
 			}
 			// 16 is the maximum number of addresses a Gateway can have
-			if len(g.Spec.Addresses) > 16 {
+			if len(gwContext.Gateway.Spec.Addresses) > 16 {
 				fieldPath := field.NewPath(fmt.Sprintf("%s/%s", nn.Namespace, nn.Name)).Child("spec").Child("addresses")
-				errs = append(errs, field.Invalid(fieldPath, g, "error while merging gateway listeners: a gateway cannot have more than 16 addresses"))
+				errs = append(errs, field.Invalid(fieldPath, gwContext.Gateway, "error while merging gateway listeners: a gateway cannot have more than 16 addresses"))
 			}
 		}
 	}

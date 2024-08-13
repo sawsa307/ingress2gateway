@@ -64,10 +64,10 @@ func TCPIngressToGatewayAPI(ingresses []kongv1beta1.TCPIngress) (i2gw.GatewayRes
 		tlsRouteByKey[key] = route
 	}
 
-	gatewayByKey := make(map[types.NamespacedName]gatewayv1.Gateway)
+	gatewayByKey := make(map[types.NamespacedName]i2gw.GatewayContext)
 	for _, gateway := range gateways {
 		key := types.NamespacedName{Namespace: gateway.Namespace, Name: gateway.Name}
-		gatewayByKey[key] = gateway
+		gatewayByKey[key] = i2gw.GatewayContext{Gateway: gateway}
 	}
 
 	return i2gw.GatewayResources{

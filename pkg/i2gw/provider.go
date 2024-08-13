@@ -90,16 +90,45 @@ type ProviderImplementationSpecificOptions struct {
 
 // GatewayResources contains all Gateway-API objects.
 type GatewayResources struct {
-	Gateways       map[types.NamespacedName]gatewayv1.Gateway
-	GatewayClasses map[types.NamespacedName]gatewayv1.GatewayClass
+	Gateways         map[types.NamespacedName]GatewayContext
+	HTTPRoutes       map[types.NamespacedName]HTTPRouteContext
+	ServiceExtension map[types.NamespacedName]ServiceExtension
 
-	HTTPRoutes map[types.NamespacedName]gatewayv1.HTTPRoute
-	TLSRoutes  map[types.NamespacedName]gatewayv1alpha2.TLSRoute
-	TCPRoutes  map[types.NamespacedName]gatewayv1alpha2.TCPRoute
-	UDPRoutes  map[types.NamespacedName]gatewayv1alpha2.UDPRoute
-
+	GatewayClasses  map[types.NamespacedName]gatewayv1.GatewayClass
+	TLSRoutes       map[types.NamespacedName]gatewayv1alpha2.TLSRoute
+	TCPRoutes       map[types.NamespacedName]gatewayv1alpha2.TCPRoute
+	UDPRoutes       map[types.NamespacedName]gatewayv1alpha2.UDPRoute
 	ReferenceGrants map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
 }
+
+type GatewayContext struct {
+	Gateway   gatewayv1.Gateway
+	Extension *GatewayExtension
+}
+type GatewayExtension struct {
+	GCE   *GCEGatewayExtension
+	Nginx *NginxGatewayExtension
+}
+type GCEGatewayExtension struct{}
+type NginxGatewayExtension struct{}
+
+type HTTPRouteContext struct {
+	HTTPRoute gatewayv1.HTTPRoute
+	Extension *HTTPRouteExtension
+}
+type HTTPRouteExtension struct {
+	GCE   *GCEHTTPRouteExtension
+	Nginx *NginxHTTPRouteExtension
+}
+type GCEHTTPRouteExtension struct{}
+type NginxHTTPRouteExtension struct{}
+
+type ServiceExtension struct {
+	GCE   *GCEServiceExtension
+	Nginx *NginxServiceExtension
+}
+type GCEServiceExtension struct{}
+type NginxServiceExtension struct{}
 
 // FeatureParser is a function that reads the Ingresses, and applies
 // the appropriate modifications to the GatewayResources.

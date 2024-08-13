@@ -105,8 +105,8 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.GatewayR
 	}
 
 	res := i2gw.GatewayResources{
-		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
-		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
+		Gateways:        make(map[types.NamespacedName]i2gw.GatewayContext),
+		HTTPRoutes:      make(map[types.NamespacedName]i2gw.HTTPRouteContext),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
@@ -122,7 +122,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.GatewayR
 			res.Gateways[types.NamespacedName{
 				Namespace: gw.Namespace,
 				Name:      gw.Name,
-			}] = gw
+			}] = i2gw.GatewayContext{Gateway: gw}
 		case "HTTPRoute":
 			var httpRoute gatewayv1.HTTPRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &httpRoute); err != nil {
@@ -132,7 +132,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.GatewayR
 			res.HTTPRoutes[types.NamespacedName{
 				Namespace: httpRoute.Namespace,
 				Name:      httpRoute.Name,
-			}] = httpRoute
+			}] = i2gw.HTTPRouteContext{HTTPRoute: httpRoute}
 		case "TLSRoute":
 			var tlsRoute gatewayv1alpha2.TLSRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &tlsRoute); err != nil {
