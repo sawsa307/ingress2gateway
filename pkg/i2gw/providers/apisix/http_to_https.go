@@ -37,12 +37,12 @@ func httpToHTTPSFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw
 					continue
 				}
 				key := types.NamespacedName{Namespace: rule.Ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
-				httpRoute, ok := gatewayResources.HTTPRoutes[key]
+				httpRouteContext, ok := gatewayResources.HTTPRoutes[key]
 				if !ok {
 					errs = append(errs, field.NotFound(field.NewPath("HTTPRoute"), key))
 				}
 
-				for i, rule := range httpRoute.Spec.Rules {
+				for i, rule := range httpRouteContext.HTTPRoute.Spec.Rules {
 					rule.Filters = append(rule.Filters, gatewayv1.HTTPRouteFilter{
 						Type: gatewayv1.HTTPRouteFilterRequestRedirect,
 						RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
@@ -50,7 +50,7 @@ func httpToHTTPSFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw
 							StatusCode: ptr.To(int(301)),
 						},
 					})
-					httpRoute.Spec.Rules[i] = rule
+					httpRouteContext.HTTPRoute.Spec.Rules[i] = rule
 				}
 			}
 		}

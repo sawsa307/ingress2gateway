@@ -90,16 +90,50 @@ type ProviderImplementationSpecificOptions struct {
 
 // GatewayResources contains all Gateway-API objects.
 type GatewayResources struct {
-	Gateways       map[types.NamespacedName]gatewayv1.Gateway
-	GatewayClasses map[types.NamespacedName]gatewayv1.GatewayClass
+	Gateways          map[types.NamespacedName]GatewayContext
+	HTTPRoutes        map[types.NamespacedName]HTTPRouteContext
+	ServiceExtensions map[types.NamespacedName]ServiceExtensions
 
-	HTTPRoutes map[types.NamespacedName]gatewayv1.HTTPRoute
-	TLSRoutes  map[types.NamespacedName]gatewayv1alpha2.TLSRoute
-	TCPRoutes  map[types.NamespacedName]gatewayv1alpha2.TCPRoute
-	UDPRoutes  map[types.NamespacedName]gatewayv1alpha2.UDPRoute
-
+	GatewayClasses  map[types.NamespacedName]gatewayv1.GatewayClass
+	TLSRoutes       map[types.NamespacedName]gatewayv1alpha2.TLSRoute
+	TCPRoutes       map[types.NamespacedName]gatewayv1alpha2.TCPRoute
+	UDPRoutes       map[types.NamespacedName]gatewayv1alpha2.UDPRoute
 	ReferenceGrants map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
 }
+
+type GatewayContext struct {
+	Gateway   gatewayv1.Gateway
+	Extension GatewayExtensions
+}
+type GatewayExtensions struct {
+	gce   GCEGatewayExtensions
+	nginx NginxGatewayExtensions
+}
+type GCEGatewayExtensions struct {
+	// gwPolicies []gkegatewayv1.GCPGatewayPolicy
+}
+type NginxGatewayExtensions struct{}
+
+type HTTPRouteContext struct {
+	HTTPRoute gatewayv1.HTTPRoute
+	Extension HTTPRouteExtensions
+}
+type HTTPRouteExtensions struct {
+	gce   GCEHTTPRouteExtensions
+	nginx NginxHTTPRouteExtensions
+}
+type GCEHTTPRouteExtensions struct{}
+type NginxHTTPRouteExtensions struct{}
+
+type ServiceExtensions struct {
+	gce   GCEServiceExtensions
+	nginx NginxServiceExtensions
+}
+type GCEServiceExtensions struct {
+	// bePolicies []gkegatewayv1.GCPBackendPolicy
+	// hcPolicies []gkegatewayv1.HealthCheckPolicy
+}
+type NginxServiceExtensions struct{}
 
 // FeatureParser is a function that reads the Ingresses, and applies
 // the appropriate modifications to the GatewayResources.

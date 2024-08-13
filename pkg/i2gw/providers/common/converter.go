@@ -47,16 +47,16 @@ func ToGateway(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementa
 		return i2gw.GatewayResources{}, errs
 	}
 
-	routeByKey := make(map[types.NamespacedName]gatewayv1.HTTPRoute)
+	routeByKey := make(map[types.NamespacedName]i2gw.HTTPRouteContext)
 	for _, route := range routes {
 		key := types.NamespacedName{Namespace: route.Namespace, Name: route.Name}
-		routeByKey[key] = route
+		routeByKey[key] = i2gw.HTTPRouteContext{HTTPRoute: route}
 	}
 
-	gatewayByKey := make(map[types.NamespacedName]gatewayv1.Gateway)
+	gatewayByKey := make(map[types.NamespacedName]i2gw.GatewayContext)
 	for _, gateway := range gateways {
 		key := types.NamespacedName{Namespace: gateway.Namespace, Name: gateway.Name}
-		gatewayByKey[key] = gateway
+		gatewayByKey[key] = i2gw.GatewayContext{Gateway: gateway}
 	}
 
 	return i2gw.GatewayResources{

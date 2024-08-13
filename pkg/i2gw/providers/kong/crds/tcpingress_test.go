@@ -68,16 +68,18 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 				},
 			},
 			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
-					{Namespace: "default", Name: "kong"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "kong", Namespace: "default"},
-						Spec: gatewayv1.GatewaySpec{
-							GatewayClassName: "kong",
-							Listeners: []gatewayv1.Listener{{
-								Name:     "tcp-all-hosts-8888",
-								Port:     8888,
-								Protocol: gatewayv1.TCPProtocolType,
-							}},
+				Gateways: map[types.NamespacedName]i2gw.GatewayContext{
+					{Namespace: "default", Name: "kong"}: i2gw.GatewayContext{
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "kong", Namespace: "default"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "kong",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "tcp-all-hosts-8888",
+									Port:     8888,
+									Protocol: gatewayv1.TCPProtocolType,
+								}},
+							},
 						},
 					},
 				},
@@ -144,27 +146,29 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 				},
 			},
 			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
-					{Namespace: "default", Name: "kong"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "kong", Namespace: "default"},
-						Spec: gatewayv1.GatewaySpec{
-							GatewayClassName: "kong",
-							Listeners: []gatewayv1.Listener{{
-								Name:     "tls-example-com-8888",
-								Port:     8888,
-								Protocol: gatewayv1.TLSProtocolType,
-								Hostname: common.PtrTo(gatewayv1.Hostname("example.com")),
-								TLS: &gatewayv1.GatewayTLSConfig{
-									Mode: common.PtrTo(gatewayv1.TLSModePassthrough),
-									CertificateRefs: []gatewayv1.SecretObjectReference{
-										{
-											Group: common.PtrTo(gatewayv1.Group("")),
-											Kind:  common.PtrTo(gatewayv1.Kind("Secret")),
-											Name:  "testSecret",
+				Gateways: map[types.NamespacedName]i2gw.GatewayContext{
+					{Namespace: "default", Name: "kong"}: i2gw.GatewayContext{
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "kong", Namespace: "default"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "kong",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "tls-example-com-8888",
+									Port:     8888,
+									Protocol: gatewayv1.TLSProtocolType,
+									Hostname: common.PtrTo(gatewayv1.Hostname("example.com")),
+									TLS: &gatewayv1.GatewayTLSConfig{
+										Mode: common.PtrTo(gatewayv1.TLSModePassthrough),
+										CertificateRefs: []gatewayv1.SecretObjectReference{
+											{
+												Group: common.PtrTo(gatewayv1.Group("")),
+												Kind:  common.PtrTo(gatewayv1.Kind("Secret")),
+												Name:  "testSecret",
+											},
 										},
 									},
-								},
-							}},
+								}},
+							},
 						},
 					},
 				},
@@ -211,11 +215,11 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 					len(tc.expectedGatewayResources.Gateways), len(gatewayResources.Gateways), gatewayResources.Gateways)
 			} else {
 				for i, got := range gatewayResources.Gateways {
-					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
+					key := types.NamespacedName{Namespace: got.Gateway.Namespace, Name: got.Gateway.Name}
 					want := tc.expectedGatewayResources.Gateways[key]
-					want.SetGroupVersionKind(common.GatewayGVK)
-					if !apiequality.Semantic.DeepEqual(got, want) {
-						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
+					want.Gateway.SetGroupVersionKind(common.GatewayGVK)
+					if !apiequality.Semantic.DeepEqual(got.Gateway, want.Gateway) {
+						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, want, got.Gateway, cmp.Diff(want, got))
 					}
 				}
 			}
@@ -225,9 +229,9 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 					len(tc.expectedGatewayResources.HTTPRoutes), len(gatewayResources.HTTPRoutes), gatewayResources.HTTPRoutes)
 			} else {
 				for i, got := range gatewayResources.HTTPRoutes {
-					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
+					key := types.NamespacedName{Namespace: got.HTTPRoute.Namespace, Name: got.HTTPRoute.Name}
 					want := tc.expectedGatewayResources.HTTPRoutes[key]
-					want.SetGroupVersionKind(common.HTTPRouteGVK)
+					want.HTTPRoute.SetGroupVersionKind(common.HTTPRouteGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
 					}

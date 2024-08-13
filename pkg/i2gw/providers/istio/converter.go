@@ -61,8 +61,8 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 	var errList field.ErrorList
 
 	gatewayResources := i2gw.GatewayResources{
-		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
-		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
+		Gateways:        make(map[types.NamespacedName]i2gw.GatewayContext),
+		HTTPRoutes:      make(map[types.NamespacedName]i2gw.HTTPRouteContext),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
@@ -80,7 +80,7 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 		gatewayResources.Gateways[types.NamespacedName{
 			Namespace: gw.Namespace,
 			Name:      gw.Name,
-		}] = *gw
+		}] = i2gw.GatewayContext{Gateway: *gw}
 	}
 
 	for _, vs := range storage.VirtualServices {
@@ -104,7 +104,7 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 				gatewayResources.HTTPRoutes[types.NamespacedName{
 					Namespace: httpRoute.Namespace,
 					Name:      httpRoute.Name,
-				}] = *httpRoute
+				}] = i2gw.HTTPRouteContext{HTTPRoute: *httpRoute}
 			}
 		}
 

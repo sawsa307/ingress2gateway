@@ -204,9 +204,9 @@ func TestMethodMatchingFeature(t *testing.T) {
 				}
 			}
 
-			for _, httpRoute := range gatewayResources.HTTPRoutes {
-				keyName := fmt.Sprintf("%s/%s", httpRoute.Namespace, httpRoute.Name)
-				for i, rule := range httpRoute.Spec.Rules {
+			for _, httpRouteContext := range gatewayResources.HTTPRoutes {
+				keyName := fmt.Sprintf("%s/%s", httpRouteContext.HTTPRoute.Namespace, httpRouteContext.HTTPRoute.Name)
+				for i, rule := range httpRouteContext.HTTPRoute.Spec.Rules {
 					if !containsMatches(rule.Matches, tc.expectedHTTPRouteMatches[keyName][i]) {
 						t.Errorf("Expected %+v matches, got %+v", tc.expectedHTTPRouteMatches, rule.Matches)
 					}
