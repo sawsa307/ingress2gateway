@@ -21,6 +21,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -74,12 +75,27 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 		errs = append(errs, parseErrs...)
 	}
 
+	_, _, serviceExtensionMap := c.irToOutput(c.inputToIR(storage))
+	gatewayResources.ServiceExtension = serviceExtensionMap
+
 	return gatewayResources, errs
 }
 
 func (c *converter) inputToIR(storage *storage) gceIR {
 	var ir gceIR
-	ir.gceServiceIRs = toServiceIR(storage)
+	ir.gceServiceIRs = toServiceIRs(storage)
 
 	return ir
+}
+
+func (c *converter) irToOutput(gceIR gceIR) (map[types.NamespacedName]i2gw.GatewayExtension, map[types.NamespacedName]i2gw.HTTPRouteExtension, map[types.NamespacedName]i2gw.ServiceExtension) {
+	gatewayExtensionMap := make(map[types.NamespacedName]i2gw.GatewayExtension)
+	httpRouteExtensionMap := make(map[types.NamespacedName]i2gw.HTTPRouteExtension)
+	serviceExtensionMap := make(map[types.NamespacedName]i2gw.ServiceExtension)
+
+	for serviceKey, serviceIR := range gceIR.gceServiceIRs {
+		serviceExtensionMap[serviceKey] = toServiceExtension(serviceIR, serviceKey.Name)
+	}
+
+	return gatewayExtensionMap, httpRouteExtensionMap, serviceExtensionMap
 }

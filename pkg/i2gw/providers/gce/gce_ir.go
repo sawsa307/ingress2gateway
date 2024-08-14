@@ -17,9 +17,14 @@ limitations under the License.
 package gce
 
 import (
+	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 	"k8s.io/ingress-gce/pkg/apis/backendconfig/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 type gceIR struct {
@@ -36,16 +41,16 @@ type gceHTTPRouteIR struct{}
 type gceServiceIR struct {
 	namespace       string
 	name            string
-	sessionAffinity sessionAffinityConfig
+	sessionAffinity *sessionAffinityConfig
 }
 
 type sessionAffinityConfig struct {
 	affinityType string
-	cookieTtlSec int64
+	cookieTtlSec *int64
 }
 
-func toServiceIR(storage *storage) map[types.NamespacedName]gceServiceIR {
-	gceServiceIR := make(map[types.NamespacedName]gceServiceIR)
+func toServiceIRs(storage *storage) map[types.NamespacedName]gceServiceIR {
+	gceServiceIRs := make(map[types.NamespacedName]gceServiceIR)
 
 	beConfigToSvcs, betaBEConfigToSvcs := getBEConfigMapping(storage)
 
@@ -53,7 +58,7 @@ func toServiceIR(storage *storage) map[types.NamespacedName]gceServiceIR {
 		serviceIR := beConfigToServiceIR(beConfig)
 		serviceList := beConfigToSvcs[beConfigKey]
 		for _, svcKey := range serviceList {
-			gceServiceIR[svcKey] = serviceIR
+			gceServiceIRs[svcKey] = serviceIR
 		}
 	}
 
@@ -61,11 +66,11 @@ func toServiceIR(storage *storage) map[types.NamespacedName]gceServiceIR {
 		serviceIR := betaBeConfigToServiceIR(betaBeConfig)
 		serviceList := betaBEConfigToSvcs[betaBeConfigKey]
 		for _, svcKey := range serviceList {
-			gceServiceIR[svcKey] = serviceIR
+			gceServiceIRs[svcKey] = serviceIR
 		}
 	}
 
-	return gceServiceIR
+	return gceServiceIRs
 }
 
 func beConfigToServiceIR(beConfig *v1.BackendConfig) gceServiceIR {
@@ -73,9 +78,15 @@ func beConfigToServiceIR(beConfig *v1.BackendConfig) gceServiceIR {
 
 	serviceIR.namespace = beConfig.Namespace
 	serviceIR.name = beConfig.Name
-	serviceIR.sessionAffinity.affinityType = beConfig.Spec.SessionAffinity.AffinityType
-	serviceIR.sessionAffinity.cookieTtlSec = *beConfig.Spec.SessionAffinity.AffinityCookieTtlSec
-
+	if beConfig.Spec.SessionAffinity != nil {
+		serviceIR.sessionAffinity = &sessionAffinityConfig{
+			affinityType: beConfig.Spec.SessionAffinity.AffinityType,
+		}
+		if beConfig.Spec.SessionAffinity.AffinityType == "GENERATED_COOKIE" &&
+			beConfig.Spec.SessionAffinity.AffinityCookieTtlSec != nil {
+			serviceIR.sessionAffinity.cookieTtlSec = beConfig.Spec.SessionAffinity.AffinityCookieTtlSec
+		}
+	}
 	return serviceIR
 }
 
@@ -84,8 +95,53 @@ func betaBeConfigToServiceIR(betaBeConfig *v1beta1.BackendConfig) gceServiceIR {
 
 	serviceIR.namespace = betaBeConfig.Namespace
 	serviceIR.name = betaBeConfig.Name
-	serviceIR.sessionAffinity.affinityType = betaBeConfig.Spec.SessionAffinity.AffinityType
-	serviceIR.sessionAffinity.cookieTtlSec = *betaBeConfig.Spec.SessionAffinity.AffinityCookieTtlSec
 
+	if betaBeConfig.Spec.SessionAffinity != nil {
+		serviceIR.sessionAffinity = &sessionAffinityConfig{
+			affinityType: betaBeConfig.Spec.SessionAffinity.AffinityType,
+		}
+		if betaBeConfig.Spec.SessionAffinity.AffinityType == "GENERATED_COOKIE" &&
+			betaBeConfig.Spec.SessionAffinity.AffinityCookieTtlSec != nil {
+			serviceIR.sessionAffinity.cookieTtlSec = betaBeConfig.Spec.SessionAffinity.AffinityCookieTtlSec
+		}
+	}
 	return serviceIR
+}
+
+func toServiceExtension(serviceIR gceServiceIR, serviceName string) i2gw.ServiceExtension {
+	serviceExtension := i2gw.ServiceExtension{GCE: &i2gw.GCEServiceExtension{}}
+	if serviceIR.sessionAffinity != nil {
+		serviceExtension.GCE.GCPBackendPolicy = toBackendPolicy(serviceIR, serviceName)
+	}
+
+	return serviceExtension
+}
+
+func toBackendPolicy(serviceIR gceServiceIR, serviceName string) *gkegatewayv1.GCPBackendPolicy {
+	if serviceIR.sessionAffinity != nil {
+		affinityType := serviceIR.sessionAffinity.affinityType
+		cookieTTLSec := serviceIR.sessionAffinity.cookieTtlSec
+		backendPolicy := gkegatewayv1.GCPBackendPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: serviceIR.namespace,
+				Name:      serviceIR.name,
+			},
+			Spec: gkegatewayv1.GCPBackendPolicySpec{
+				Default: &gkegatewayv1.GCPBackendPolicyConfig{
+					SessionAffinity: &gkegatewayv1.SessionAffinityConfig{
+						Type:         &affinityType,
+						CookieTTLSec: cookieTTLSec,
+					},
+				},
+				TargetRef: v1alpha2.PolicyTargetReference{
+					Group: "",
+					Kind:  "Service",
+					Name:  gatewayv1.ObjectName(serviceName),
+				},
+			},
+		}
+		backendPolicy.SetGroupVersionKind(GCPBackendPolicyGVK)
+		return &backendPolicy
+	}
+	return nil
 }

@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 	backendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1beta1"
+	"k8s.io/klog/v2"
 )
 
 // GCE supports the following Ingress Class values:
@@ -51,6 +52,14 @@ type reader struct {
 
 // newResourceReader returns a resourceReader instance.
 func newResourceReader(conf *i2gw.ProviderConf) reader {
+	if conf.Client != nil {
+		if err := backendconfigv1.AddToScheme(conf.Client.Scheme()); err != nil {
+			klog.Errorf("Unable to add Beta BackendConfig to schema: %v", err)
+		}
+		if err := backendconfigv1beta1.AddToScheme(conf.Client.Scheme()); err != nil {
+			klog.Errorf("Unable to add Beta BackendConfig to schema: %v", err)
+		}
+	}
 	return reader{
 		conf: conf,
 	}
@@ -115,6 +124,7 @@ func (r *reader) readServicesFromCluster(ctx context.Context) (map[types.Namespa
 func (r *reader) readBackendConfigsFromCluster(ctx context.Context) (map[types.NamespacedName]*backendconfigv1.BackendConfig, map[types.NamespacedName]*backendconfigv1beta1.BackendConfig, error) {
 	var backendConfigList backendconfigv1.BackendConfigList
 	backendConfigList.SetGroupVersionKind(backendConfigGVK)
+	// r.backendConfigClient.CloudV1().BackendConfigs().List()
 	err := r.conf.Client.List(ctx, &backendConfigList)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get backendConfigs from the cluster: %w", err)

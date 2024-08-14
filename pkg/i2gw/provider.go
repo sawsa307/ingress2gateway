@@ -20,6 +20,7 @@ import (
 	"context"
 	"sync"
 
+	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -109,7 +110,9 @@ type GatewayExtension struct {
 	GCE   *GCEGatewayExtension
 	Nginx *NginxGatewayExtension
 }
-type GCEGatewayExtension struct{}
+type GCEGatewayExtension struct {
+	GCPGatewayPolicy *gkegatewayv1.GCPGatewayPolicy
+}
 type NginxGatewayExtension struct{}
 
 type HTTPRouteContext struct {
@@ -127,7 +130,10 @@ type ServiceExtension struct {
 	GCE   *GCEServiceExtension
 	Nginx *NginxServiceExtension
 }
-type GCEServiceExtension struct{}
+type GCEServiceExtension struct {
+	GCPBackendPolicy  *gkegatewayv1.GCPBackendPolicy
+	HealthCheckPolicy *gkegatewayv1.HealthCheckPolicy
+}
 type NginxServiceExtension struct{}
 
 // FeatureParser is a function that reads the Ingresses, and applies

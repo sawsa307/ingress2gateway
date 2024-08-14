@@ -121,6 +121,16 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 			if err != nil {
 				fmt.Printf("# Error printing %s Gateway: %v\n", gatewayContext.Gateway.Name, err)
 			}
+			if gatewayContext.Extension == nil {
+				continue
+			}
+			if gatewayContext.Extension.GCE != nil && gatewayContext.Extension.GCE.GCPGatewayPolicy != nil {
+				resourceCount += 1
+				err := pr.resourcePrinter.PrintObj(gatewayContext.Extension.GCE.GCPGatewayPolicy, os.Stdout)
+				if err != nil {
+					fmt.Printf("# Error printing %s GCPGatewayPolicy: %v\n", gatewayContext.Extension.GCE.GCPGatewayPolicy.Name, err)
+				}
+			}
 		}
 	}
 
@@ -175,6 +185,29 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 			err := pr.resourcePrinter.PrintObj(&referenceGrant, os.Stdout)
 			if err != nil {
 				fmt.Printf("# Error printing %s ReferenceGrant: %v\n", referenceGrant.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		for _, serviceExtension := range r.ServiceExtension {
+			serviceExtension := serviceExtension
+			if serviceExtension.GCE == nil {
+				continue
+			}
+			if serviceExtension.GCE.GCPBackendPolicy != nil {
+				resourceCount += 1
+				err := pr.resourcePrinter.PrintObj(serviceExtension.GCE.GCPBackendPolicy, os.Stdout)
+				if err != nil {
+					fmt.Printf("# Error printing %s GCPBackendPolicy: %v\n", serviceExtension.GCE.GCPBackendPolicy.Name, err)
+				}
+			}
+			if serviceExtension.GCE.HealthCheckPolicy != nil {
+				resourceCount += 1
+				err := pr.resourcePrinter.PrintObj(serviceExtension.GCE.HealthCheckPolicy, os.Stdout)
+				if err != nil {
+					fmt.Printf("# Error printing %s HealthCheckPolicy: %v\n", serviceExtension.GCE.HealthCheckPolicy.Name, err)
+				}
 			}
 		}
 	}

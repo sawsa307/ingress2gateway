@@ -38,4 +38,10 @@ var (
 		Version: "v1beta1",
 		Kind:    "BackendConfig",
 	}
+
+	GCPBackendPolicyGVK = schema.GroupVersionKind{
+		Group:   "networking.gke.io",
+		Version: "v1",
+		Kind:    "GCPBackendPolicy",
+	}
 )
