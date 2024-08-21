@@ -101,6 +101,90 @@ type GatewayResources struct {
 	ReferenceGrants map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
 }
 
+// IR holds specifications of Gateway Objects for supporting Ingress extensions,
+// annotations, and proprietary API features not supported as Gateway core
+// features. An IR field can be mapped to core Gateway-API fields,
+// or provider-specific Gateway extensions.
+type IR struct {
+	Gateways   map[types.NamespacedName]GatewayContext
+	HTTPRoutes map[types.NamespacedName]HTTPRouteContext
+	Services   map[types.NamespacedName]*ServiceIR
+
+	GatewayClasses map[types.NamespacedName]gatewayv1.GatewayClass
+	TLSRoutes      map[types.NamespacedName]gatewayv1alpha2.TLSRoute
+	TCPRoutes      map[types.NamespacedName]gatewayv1alpha2.TCPRoute
+	UDPRoutes      map[types.NamespacedName]gatewayv1alpha2.UDPRoute
+
+	ReferenceGrants map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
+}
+
+// GatewayContext contains the Gateway-API Gateway object, along with a
+// dedicated field for each provider to specify their extension features on
+// Gateway.
+// The IR will contain necessary information to construct the Gateway
+// extensions, but not the extensions themselves.
+type GatewayContext struct {
+	gatewayv1.Gateway
+
+	Apisix       *ApisixGatewayIR
+	GCE          *GceGatewayIR
+	IngressNginx *IngressNginxGatewayIR
+	Istio        *IstioGatewayIR
+	Kong         *KongGatewayIR
+	Openapi3     *Openapi3GatewayIR
+}
+
+// HTTPRouteContext contains the Gateway-API HTTPRoute object, along with a
+// dedicated field for each provider to specify their extension features on
+// HTTPRoute.
+// The IR will contain necessary information to construct the HTTPRoute
+// extensions, but not the extensions themselves.
+type HTTPRouteContext struct {
+	gatewayv1.HTTPRoute
+
+	Apisix       *ApisixHTTPRouteIR
+	Gce          *GceHTTPRouteIR
+	IngressNginx *IngressNginxHTTPRouteIR
+	Istio        *IstioHTTPRouteIR
+	Kong         *KongHTTPRouteIR
+	Openapi3     *Openapi3HTTPRouteIR
+}
+
+// ServiceIR contains a dedicated field for each provider to specify their
+// extension features on Service.
+type ServiceIR struct {
+	Apisix       *ApisixServiceIR
+	Gce          *GceServiceIR
+	IngressNginx *IngressNginxServiceIR
+	Istio        *IstioServiceIR
+	Kong         *KongServiceIR
+	Openapi3     *Openapi3ServiceIR
+}
+
+type ApisixGatewayIR struct{}
+type ApisixHTTPRouteIR struct{}
+type ApisixServiceIR struct{}
+
+type GceGatewayIR struct{}
+type GceHTTPRouteIR struct{}
+type GceServiceIR struct{}
+
+type IngressNginxGatewayIR struct{}
+type IngressNginxHTTPRouteIR struct{}
+type IngressNginxServiceIR struct{}
+
+type IstioGatewayIR struct{}
+type IstioHTTPRouteIR struct{}
+type IstioServiceIR struct{}
+
+type KongGatewayIR struct{}
+type KongHTTPRouteIR struct{}
+type KongServiceIR struct{}
+
+type Openapi3GatewayIR struct{}
+type Openapi3HTTPRouteIR struct{}
+type Openapi3ServiceIR struct{}
+
 // FeatureParser is a function that reads the Ingresses, and applies
 // the appropriate modifications to the GatewayResources.
 //
