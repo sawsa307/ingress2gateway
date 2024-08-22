@@ -31,9 +31,9 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-// ToGateway converts the received ingresses to i2gw.GatewayResources,
-// without taking into consideration any provider specific logic.
-func ToGateway(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementationSpecificOptions) (i2gw.GatewayResources, field.ErrorList) {
+// ToIR converts the received ingresses to i2gw.IR without taking into
+// consideration any provider specific logic.
+func ToIR(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementationSpecificOptions) (i2gw.IR, field.ErrorList) {
 	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
 
 	var errs field.ErrorList
@@ -41,27 +41,27 @@ func ToGateway(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementa
 		aggregator.addIngress(ingress)
 	}
 	if len(errs) > 0 {
-		return i2gw.GatewayResources{}, errs
+		return i2gw.IR{}, errs
 	}
 
 	routes, gateways, errs := aggregator.toHTTPRoutesAndGateways(options)
 	if len(errs) > 0 {
-		return i2gw.GatewayResources{}, errs
+		return i2gw.IR{}, errs
 	}
 
-	routeByKey := make(map[types.NamespacedName]gatewayv1.HTTPRoute)
+	routeByKey := make(map[types.NamespacedName]i2gw.HTTPRouteContext)
 	for _, route := range routes {
 		key := types.NamespacedName{Namespace: route.Namespace, Name: route.Name}
-		routeByKey[key] = route
+		routeByKey[key] = i2gw.HTTPRouteContext{HTTPRoute: route}
 	}
 
-	gatewayByKey := make(map[types.NamespacedName]gatewayv1.Gateway)
+	gatewayByKey := make(map[types.NamespacedName]i2gw.GatewayContext)
 	for _, gateway := range gateways {
 		key := types.NamespacedName{Namespace: gateway.Namespace, Name: gateway.Name}
-		gatewayByKey[key] = gateway
+		gatewayByKey[key] = i2gw.GatewayContext{Gateway: gateway}
 	}
 
-	return i2gw.GatewayResources{
+	return i2gw.IR{
 		Gateways:   gatewayByKey,
 		HTTPRoutes: routeByKey,
 	}, nil

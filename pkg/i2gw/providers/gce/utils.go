@@ -28,7 +28,7 @@ import (
 )
 
 // setGCEGatewayClasses updates the list of Gateways to use GCE GatewayClass.
-func setGCEGatewayClasses(ingresses []networkingv1.Ingress, gatewayResources *i2gw.GatewayResources) field.ErrorList {
+func setGCEGatewayClasses(ingresses []networkingv1.Ingress, gatewayContexts map[types.NamespacedName]i2gw.GatewayContext) field.ErrorList {
 	var errs field.ErrorList
 
 	// Since we already validated ingress resources when reading, there are
@@ -40,13 +40,13 @@ func setGCEGatewayClasses(ingresses []networkingv1.Ingress, gatewayResources *i2
 	//      mapped to `gke-l7-global-external-managed`.
 	for _, ingress := range ingresses {
 		gwKey := types.NamespacedName{Namespace: ingress.Namespace, Name: common.GetIngressClass(ingress)}
-		existingGateway := gatewayResources.Gateways[gwKey]
+		existingGateway := gatewayContexts[gwKey].Gateway
 
 		newGateway, err := setGCEGatewayClass(ingress, existingGateway)
 		if err != nil {
 			errs = append(errs, err)
 		}
-		gatewayResources.Gateways[gwKey] = newGateway
+		gatewayContexts[gwKey] = i2gw.GatewayContext{Gateway: newGateway}
 	}
 	if len(errs) > 0 {
 		return errs

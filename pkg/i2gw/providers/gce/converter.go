@@ -24,17 +24,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// converter implements the ToGatewayAPI function of i2gw.ResourceConverter interface.
-type converter struct {
+// resourcesToIRConverter implements the ToIR function of i2gw.ResourcesToIRConverter interface.
+type resourcesToIRConverter struct {
 	conf *i2gw.ProviderConf
 
 	featureParsers                []i2gw.FeatureParser
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
 }
 
-// newConverter returns an ingress-gce converter instance.
-func newConverter(conf *i2gw.ProviderConf) converter {
-	return converter{
+// newResourcesToIRConverter returns an ingress-gce resourcesToIRConverter instance.
+func newResourcesToIRConverter(conf *i2gw.ProviderConf) resourcesToIRConverter {
+	return resourcesToIRConverter{
 		conf:           conf,
 		featureParsers: []i2gw.FeatureParser{},
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
@@ -43,7 +43,7 @@ func newConverter(conf *i2gw.ProviderConf) converter {
 	}
 }
 
-func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.ErrorList) {
+func (c *resourcesToIRConverter) convertToIR(storage *storage) (i2gw.IR, field.ErrorList) {
 	ingressList := []networkingv1.Ingress{}
 	for _, ing := range storage.Ingresses {
 		if ing != nil && common.GetIngressClass(*ing) == "" {
@@ -57,22 +57,21 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	gatewayResources, errs := common.ToGateway(ingressList, c.implementationSpecificOptions)
+	ir, errs := common.ToIR(ingressList, c.implementationSpecificOptions)
 	if len(errs) > 0 {
-		return i2gw.GatewayResources{}, errs
+		return i2gw.IR{}, errs
 	}
 
-	errs = setGCEGatewayClasses(ingressList, &gatewayResources)
+	errs = setGCEGatewayClasses(ingressList, ir.Gateways)
 	if len(errs) > 0 {
-		return i2gw.GatewayResources{}, errs
+		return i2gw.IR{}, errs
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
-		parseErrs := parseFeatureFunc(ingressList, &gatewayResources)
+		parseErrs := parseFeatureFunc(ingressList, &ir)
 		// Append the parsing errors to the error list.
 		errs = append(errs, parseErrs...)
 	}
-
-	return gatewayResources, errs
+	return ir, errs
 }

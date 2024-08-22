@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -34,24 +35,28 @@ func init() {
 
 // Provider implements the i2gw.Provider interface.
 type Provider struct {
-	storage        *storage
-	resourceReader *resourceReader
-	converter      *converter
+	storage                *storage
+	resourceReader         *resourceReader
+	resourcesToIRConverter *resourcesToIRConverter
 }
 
 // NewProvider constructs and returns the apisix implementation of i2gw.Provider.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
-		storage:        newResourcesStorage(),
-		resourceReader: newResourceReader(conf),
-		converter:      newConverter(),
+		storage:                newResourcesStorage(),
+		resourceReader:         newResourceReader(conf),
+		resourcesToIRConverter: newResourcesToIRConverter(),
 	}
 }
 
-// ToGatewayAPI converts stored Apisix API entities to i2gw.GatewayResources
+// ToIR converts stored Apisix API entities to i2gw.IR
 // including the apisix specific features.
-func (p *Provider) ToGatewayAPI() (i2gw.GatewayResources, field.ErrorList) {
-	return p.converter.convert(p.storage)
+func (p *Provider) ToIR() (i2gw.IR, field.ErrorList) {
+	return p.resourcesToIRConverter.convertToIR(p.storage)
+}
+
+func (p *Provider) ToGatewayResources(ir i2gw.IR) (i2gw.GatewayResources, field.ErrorList) {
+	return common.ToGatewayResources(ir)
 }
 
 func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {

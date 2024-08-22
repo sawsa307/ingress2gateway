@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -32,24 +33,28 @@ func init() {
 }
 
 type Provider struct {
-	storage   *storage
-	reader    reader
-	converter converter
+	storage                *storage
+	reader                 reader
+	resourcesToIRConverter resourcesToIRConverter
 }
 
 // NewProvider returns the istio implementation of i2gw.Provider.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
-		storage:   newResourcesStorage(),
-		reader:    newResourceReader(conf),
-		converter: newConverter(),
+		storage:                newResourcesStorage(),
+		reader:                 newResourceReader(conf),
+		resourcesToIRConverter: newResourcesToIRConverter(),
 	}
 }
 
-// ToGatewayAPI converts stored Istio API entities to i2gw.GatewayResources
+// ToIR converts stored Istio API entities to i2gw.IR
 // K8S Ingress resources are not needed, only Istio-based are converted
-func (p *Provider) ToGatewayAPI() (i2gw.GatewayResources, field.ErrorList) {
-	return p.converter.convert(p.storage)
+func (p *Provider) ToIR() (i2gw.IR, field.ErrorList) {
+	return p.resourcesToIRConverter.convertToIR(p.storage)
+}
+
+func (p *Provider) ToGatewayResources(ir i2gw.IR) (i2gw.GatewayResources, field.ErrorList) {
+	return common.ToGatewayResources(ir)
 }
 
 func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {

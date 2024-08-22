@@ -23,15 +23,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// converter implements the ToGatewayAPI function of i2gw.ResourceConverter interface.
-type converter struct {
+// resourcesToIRConverter implements the ToIR function of i2gw.ResourcesToIRConverter interface.
+type resourcesToIRConverter struct {
 	featureParsers                []i2gw.FeatureParser
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
 }
 
-// newConverter returns an apisix converter instance.
-func newConverter() *converter {
-	return &converter{
+// newResourcesToIRConverter returns an apisix resourcesToIRConverter instance.
+func newResourcesToIRConverter() *resourcesToIRConverter {
+	return &resourcesToIRConverter{
 		featureParsers: []i2gw.FeatureParser{
 			httpToHTTPSFeature,
 		},
@@ -41,24 +41,24 @@ func newConverter() *converter {
 	}
 }
 
-func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.ErrorList) {
+func (c *resourcesToIRConverter) convertToIR(storage *storage) (i2gw.IR, field.ErrorList) {
 	ingressList := []networkingv1.Ingress{}
 	for _, ing := range storage.Ingresses {
 		ingressList = append(ingressList, *ing)
 	}
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	gatewayResources, errs := common.ToGateway(ingressList, c.implementationSpecificOptions)
+	ir, errs := common.ToIR(ingressList, c.implementationSpecificOptions)
 	if len(errs) > 0 {
-		return i2gw.GatewayResources{}, errs
+		return i2gw.IR{}, errs
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
-		parseErrs := parseFeatureFunc(ingressList, &gatewayResources)
+		parseErrs := parseFeatureFunc(ingressList, &ir)
 		// Append the parsing errors to the error list.
 		errs = append(errs, parseErrs...)
 	}
 
-	return gatewayResources, errs
+	return ir, errs
 }

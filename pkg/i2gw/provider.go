@@ -55,7 +55,8 @@ type ProviderConf struct {
 // be used.
 type Provider interface {
 	CustomResourceReader
-	ResourceConverter
+	ResourcesToIRConverter
+	IRToGatewayAPIConverter
 }
 
 type CustomResourceReader interface {
@@ -69,13 +70,19 @@ type CustomResourceReader interface {
 	ReadResourcesFromFile(ctx context.Context, filename string) error
 }
 
-// The ResourceConverter interface specifies all the implemented Gateway API resource
-// conversion functions.
-type ResourceConverter interface {
+// The ResourcesToIRConverter interface specifies conversion functions from Ingress
+// and extensions into IR.
+type ResourcesToIRConverter interface {
+	// ToIR converts stored API entities associated with the Provider into IR.
+	ToIR() (IR, field.ErrorList)
+}
 
-	// ToGatewayAPIResources converts stored API entities associated
-	// with the Provider into GatewayResources.
-	ToGatewayAPI() (GatewayResources, field.ErrorList)
+// The IRToGatewayAPIConverter interface specifies conversion functions from IR
+// into Gateway and Gateway extensions.
+type IRToGatewayAPIConverter interface {
+	// ToGatewayResources converts stored IR with the Provider into
+	// Gateway API resources and extensions
+	ToGatewayResources(IR) (GatewayResources, field.ErrorList)
 }
 
 // ImplementationSpecificHTTPPathTypeMatchConverter is an option to customize the ingress implementationSpecific
@@ -194,7 +201,7 @@ type Openapi3ServiceIR struct{}
 //
 // Different FeatureParsers will run in undetermined order. The function must
 // modify / create only the required fields of the gateway resources and nothing else.
-type FeatureParser func([]networkingv1.Ingress, *GatewayResources) field.ErrorList
+type FeatureParser func([]networkingv1.Ingress, *IR) field.ErrorList
 
 var providerSpecificFlagDefinitions = providerSpecificFlags{
 	flags: make(map[ProviderName]map[string]ProviderSpecificFlag),

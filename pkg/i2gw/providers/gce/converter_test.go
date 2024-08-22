@@ -33,7 +33,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func Test_ToGateway(t *testing.T) {
+func Test_ToIR(t *testing.T) {
 	testNamespace := "default"
 	testHost := "test.mydomain.com"
 	testBackendServiceName := "test"
@@ -48,10 +48,10 @@ func Test_ToGateway(t *testing.T) {
 	noIngClassIngressName := "no-ingress-class"
 
 	testCases := []struct {
-		name                     string
-		ingresses                map[types.NamespacedName]*networkingv1.Ingress
-		expectedGatewayResources i2gw.GatewayResources
-		expectedErrors           field.ErrorList
+		name           string
+		ingresses      map[types.NamespacedName]*networkingv1.Ingress
+		expectedIR     i2gw.IR
+		expectedErrors field.ErrorList
 	}{
 		{
 			name: "gce ingress class",
@@ -85,47 +85,50 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+			expectedIR: i2gw.IR{
+				Gateways: map[types.NamespacedName]i2gw.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
-						ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
-						Spec: gatewayv1.GatewaySpec{
-							GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
-							Listeners: []gatewayv1.Listener{{
-								Name:     "test-mydomain-com-http",
-								Port:     80,
-								Protocol: gatewayv1.HTTPProtocolType,
-								Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+								}},
 							}},
-						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+				HTTPRoutes: map[types.NamespacedName]i2gw.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
-						ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
-						Spec: gatewayv1.HTTPRouteSpec{
-							CommonRouteSpec: gatewayv1.CommonRouteSpec{
-								ParentRefs: []gatewayv1.ParentReference{{
-									Name: gceIngressClass,
-								}},
-							},
-							Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
-							Rules: []gatewayv1.HTTPRouteRule{
-								{
-									Matches: []gatewayv1.HTTPRouteMatch{
-										{
-											Path: &gatewayv1.HTTPPathMatch{
-												Type:  &gPathPrefix,
-												Value: ptrTo("/"),
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  &gPathPrefix,
+													Value: ptrTo("/"),
+												},
 											},
 										},
-									},
-									BackendRefs: []gatewayv1.HTTPBackendRef{
-										{
-											BackendRef: gatewayv1.BackendRef{
-												BackendObjectReference: gatewayv1.BackendObjectReference{
-													Name: gatewayv1.ObjectName(testBackendServiceName),
-													Port: ptrTo(gatewayv1.PortNumber(80)),
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testBackendServiceName),
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
 												},
 											},
 										},
@@ -170,47 +173,51 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+			expectedIR: i2gw.IR{
+				Gateways: map[types.NamespacedName]i2gw.GatewayContext{
 					{Namespace: testNamespace, Name: gceL7ILBIngressClass}: {
-						ObjectMeta: metav1.ObjectMeta{Name: gceL7ILBIngressClass, Namespace: testNamespace},
-						Spec: gatewayv1.GatewaySpec{
-							GatewayClassName: gceL7RegionalInternalGatewayClass,
-							Listeners: []gatewayv1.Listener{{
-								Name:     "test-mydomain-com-http",
-								Port:     80,
-								Protocol: gatewayv1.HTTPProtocolType,
-								Hostname: ptrTo(gatewayv1.Hostname(testHost)),
-							}},
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceL7ILBIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7RegionalInternalGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+								}},
+							},
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+				HTTPRoutes: map[types.NamespacedName]i2gw.HTTPRouteContext{
 					{Namespace: testNamespace, Name: "gce-internal-ingress-class-test-mydomain-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "gce-internal-ingress-class-test-mydomain-com", Namespace: testNamespace},
-						Spec: gatewayv1.HTTPRouteSpec{
-							CommonRouteSpec: gatewayv1.CommonRouteSpec{
-								ParentRefs: []gatewayv1.ParentReference{{
-									Name: gceL7ILBIngressClass,
-								}},
-							},
-							Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
-							Rules: []gatewayv1.HTTPRouteRule{
-								{
-									Matches: []gatewayv1.HTTPRouteMatch{
-										{
-											Path: &gatewayv1.HTTPPathMatch{
-												Type:  &gPathPrefix,
-												Value: ptrTo("/"),
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "gce-internal-ingress-class-test-mydomain-com", Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceL7ILBIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  &gPathPrefix,
+													Value: ptrTo("/"),
+												},
 											},
 										},
-									},
-									BackendRefs: []gatewayv1.HTTPBackendRef{
-										{
-											BackendRef: gatewayv1.BackendRef{
-												BackendObjectReference: gatewayv1.BackendObjectReference{
-													Name: gatewayv1.ObjectName(testBackendServiceName),
-													Port: ptrTo(gatewayv1.PortNumber(80)),
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testBackendServiceName),
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
 												},
 											},
 										},
@@ -254,47 +261,51 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+			expectedIR: i2gw.IR{
+				Gateways: map[types.NamespacedName]i2gw.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
-						ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
-						Spec: gatewayv1.GatewaySpec{
-							GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
-							Listeners: []gatewayv1.Listener{{
-								Name:     "test-mydomain-com-http",
-								Port:     80,
-								Protocol: gatewayv1.HTTPProtocolType,
-								Hostname: ptrTo(gatewayv1.Hostname(testHost)),
-							}},
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+								}},
+							},
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+				HTTPRoutes: map[types.NamespacedName]i2gw.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", noIngClassIngressName)}: {
-						ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", noIngClassIngressName), Namespace: testNamespace},
-						Spec: gatewayv1.HTTPRouteSpec{
-							CommonRouteSpec: gatewayv1.CommonRouteSpec{
-								ParentRefs: []gatewayv1.ParentReference{{
-									Name: gceIngressClass,
-								}},
-							},
-							Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
-							Rules: []gatewayv1.HTTPRouteRule{
-								{
-									Matches: []gatewayv1.HTTPRouteMatch{
-										{
-											Path: &gatewayv1.HTTPPathMatch{
-												Type:  &gPathPrefix,
-												Value: ptrTo("/"),
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", noIngClassIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  &gPathPrefix,
+													Value: ptrTo("/"),
+												},
 											},
 										},
-									},
-									BackendRefs: []gatewayv1.HTTPBackendRef{
-										{
-											BackendRef: gatewayv1.BackendRef{
-												BackendObjectReference: gatewayv1.BackendObjectReference{
-													Name: gatewayv1.ObjectName(testBackendServiceName),
-													Port: ptrTo(gatewayv1.PortNumber(80)),
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testBackendServiceName),
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
 												},
 											},
 										},
@@ -339,47 +350,51 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+			expectedIR: i2gw.IR{
+				Gateways: map[types.NamespacedName]i2gw.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
-						ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
-						Spec: gatewayv1.GatewaySpec{
-							GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
-							Listeners: []gatewayv1.Listener{{
-								Name:     "test-mydomain-com-http",
-								Port:     80,
-								Protocol: gatewayv1.HTTPProtocolType,
-								Hostname: ptrTo(gatewayv1.Hostname(testHost)),
-							}},
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+								}},
+							},
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+				HTTPRoutes: map[types.NamespacedName]i2gw.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
-						ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
-						Spec: gatewayv1.HTTPRouteSpec{
-							CommonRouteSpec: gatewayv1.CommonRouteSpec{
-								ParentRefs: []gatewayv1.ParentReference{{
-									Name: gceIngressClass,
-								}},
-							},
-							Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
-							Rules: []gatewayv1.HTTPRouteRule{
-								{
-									Matches: []gatewayv1.HTTPRouteMatch{
-										{
-											Path: &gatewayv1.HTTPPathMatch{
-												Type:  &gPathPrefix,
-												Value: ptrTo("/"),
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  &gPathPrefix,
+													Value: ptrTo("/"),
+												},
 											},
 										},
-									},
-									BackendRefs: []gatewayv1.HTTPBackendRef{
-										{
-											BackendRef: gatewayv1.BackendRef{
-												BackendObjectReference: gatewayv1.BackendObjectReference{
-													Name: gatewayv1.ObjectName(testBackendServiceName),
-													Port: ptrTo(gatewayv1.PortNumber(80)),
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testBackendServiceName),
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
 												},
 											},
 										},
@@ -424,47 +439,51 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+			expectedIR: i2gw.IR{
+				Gateways: map[types.NamespacedName]i2gw.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
-						ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
-						Spec: gatewayv1.GatewaySpec{
-							GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
-							Listeners: []gatewayv1.Listener{{
-								Name:     "test-mydomain-com-http",
-								Port:     80,
-								Protocol: gatewayv1.HTTPProtocolType,
-								Hostname: ptrTo(gatewayv1.Hostname(testHost)),
-							}},
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+								}},
+							},
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+				HTTPRoutes: map[types.NamespacedName]i2gw.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
-						ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
-						Spec: gatewayv1.HTTPRouteSpec{
-							CommonRouteSpec: gatewayv1.CommonRouteSpec{
-								ParentRefs: []gatewayv1.ParentReference{{
-									Name: gceIngressClass,
-								}},
-							},
-							Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
-							Rules: []gatewayv1.HTTPRouteRule{
-								{
-									Matches: []gatewayv1.HTTPRouteMatch{
-										{
-											Path: &gatewayv1.HTTPPathMatch{
-												Type:  &gPathPrefix,
-												Value: ptrTo("/foo"),
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  &gPathPrefix,
+													Value: ptrTo("/foo"),
+												},
 											},
 										},
-									},
-									BackendRefs: []gatewayv1.HTTPBackendRef{
-										{
-											BackendRef: gatewayv1.BackendRef{
-												BackendObjectReference: gatewayv1.BackendObjectReference{
-													Name: gatewayv1.ObjectName(testBackendServiceName),
-													Port: ptrTo(gatewayv1.PortNumber(80)),
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testBackendServiceName),
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
 												},
 											},
 										},
@@ -509,47 +528,51 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+			expectedIR: i2gw.IR{
+				Gateways: map[types.NamespacedName]i2gw.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
-						ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
-						Spec: gatewayv1.GatewaySpec{
-							GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
-							Listeners: []gatewayv1.Listener{{
-								Name:     "test-mydomain-com-http",
-								Port:     80,
-								Protocol: gatewayv1.HTTPProtocolType,
-								Hostname: ptrTo(gatewayv1.Hostname(testHost)),
-							}},
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+								}},
+							},
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+				HTTPRoutes: map[types.NamespacedName]i2gw.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
-						ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
-						Spec: gatewayv1.HTTPRouteSpec{
-							CommonRouteSpec: gatewayv1.CommonRouteSpec{
-								ParentRefs: []gatewayv1.ParentReference{{
-									Name: gceIngressClass,
-								}},
-							},
-							Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
-							Rules: []gatewayv1.HTTPRouteRule{
-								{
-									Matches: []gatewayv1.HTTPRouteMatch{
-										{
-											Path: &gatewayv1.HTTPPathMatch{
-												Type:  &gExact,
-												Value: ptrTo("/foo"),
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  &gExact,
+													Value: ptrTo("/foo"),
+												},
 											},
 										},
-									},
-									BackendRefs: []gatewayv1.HTTPBackendRef{
-										{
-											BackendRef: gatewayv1.BackendRef{
-												BackendObjectReference: gatewayv1.BackendObjectReference{
-													Name: gatewayv1.ObjectName(testBackendServiceName),
-													Port: ptrTo(gatewayv1.PortNumber(80)),
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testBackendServiceName),
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
 												},
 											},
 										},
@@ -572,8 +595,8 @@ func Test_ToGateway(t *testing.T) {
 			gceProvider.storage = newResourcesStorage()
 			gceProvider.storage.Ingresses = tc.ingresses
 
-			// TODO(#113) we pass an empty i2gw.InputResources temporarily until we change ToGatewayAPI function on the interface
-			gatewayResources, errs := provider.ToGatewayAPI()
+			// TODO(#113) we pass an empty i2gw.InputResources temporarily until we change ToIR function on the interface
+			ir, errs := provider.ToIR()
 
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
@@ -585,30 +608,30 @@ func Test_ToGateway(t *testing.T) {
 				}
 			}
 
-			if len(gatewayResources.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
+			if len(ir.HTTPRoutes) != len(tc.expectedIR.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",
-					len(tc.expectedGatewayResources.HTTPRoutes), len(gatewayResources.HTTPRoutes), gatewayResources.HTTPRoutes)
+					len(tc.expectedIR.HTTPRoutes), len(ir.HTTPRoutes), ir.HTTPRoutes)
 			} else {
-				for i, got := range gatewayResources.HTTPRoutes {
-					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
-					want := tc.expectedGatewayResources.HTTPRoutes[key]
-					want.SetGroupVersionKind(common.HTTPRouteGVK)
-					if !apiequality.Semantic.DeepEqual(got, want) {
-						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
+				for i, gotHTTPRouteContext := range ir.HTTPRoutes {
+					key := types.NamespacedName{Namespace: gotHTTPRouteContext.HTTPRoute.Namespace, Name: gotHTTPRouteContext.HTTPRoute.Name}
+					wantHTTPRouteContext := tc.expectedIR.HTTPRoutes[key]
+					wantHTTPRouteContext.HTTPRoute.SetGroupVersionKind(common.HTTPRouteGVK)
+					if !apiequality.Semantic.DeepEqual(gotHTTPRouteContext.HTTPRoute, wantHTTPRouteContext.HTTPRoute) {
+						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, wantHTTPRouteContext.HTTPRoute, gotHTTPRouteContext.HTTPRoute, cmp.Diff(wantHTTPRouteContext.HTTPRoute, gotHTTPRouteContext.HTTPRoute))
 					}
 				}
 			}
 
-			if len(gatewayResources.Gateways) != len(tc.expectedGatewayResources.Gateways) {
+			if len(ir.Gateways) != len(tc.expectedIR.Gateways) {
 				t.Errorf("Expected %d Gateways, got %d: %+v",
-					len(tc.expectedGatewayResources.Gateways), len(gatewayResources.Gateways), gatewayResources.Gateways)
+					len(tc.expectedIR.Gateways), len(ir.Gateways), ir.Gateways)
 			} else {
-				for i, got := range gatewayResources.Gateways {
-					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
-					want := tc.expectedGatewayResources.Gateways[key]
-					want.SetGroupVersionKind(common.GatewayGVK)
-					if !apiequality.Semantic.DeepEqual(got, want) {
-						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
+				for i, gotGatewayContext := range ir.Gateways {
+					key := types.NamespacedName{Namespace: gotGatewayContext.Gateway.Namespace, Name: gotGatewayContext.Gateway.Name}
+					wantGatewayContext := tc.expectedIR.Gateways[key]
+					wantGatewayContext.Gateway.SetGroupVersionKind(common.GatewayGVK)
+					if !apiequality.Semantic.DeepEqual(gotGatewayContext.Gateway, wantGatewayContext.Gateway) {
+						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, wantGatewayContext.Gateway, gotGatewayContext.Gateway, cmp.Diff(wantGatewayContext.Gateway, gotGatewayContext.Gateway))
 					}
 				}
 			}

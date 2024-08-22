@@ -115,42 +115,42 @@ func TestFileConvertion(t *testing.T) {
 			t.Fatalf("missing expected error during reading test file %v: %v", d.Name(), expectedReadFileError.Error())
 		}
 
-		gotGatewayResources, errList := provider.ToGatewayAPI()
+		gotIR, errList := provider.ToIR()
 		if len(errList) > 0 {
-			t.Fatalf("unexpected errors during input conversion for file %v: %v", d.Name(), errList.ToAggregate().Error())
+			t.Fatalf("unexpected errors during input conversion to ir for file %v: %v", d.Name(), errList.ToAggregate().Error())
 		}
 
 		outputFile := filepath.Join(fixturesDir, "output", d.Name())
-		wantGatewayResources, err := readGatewayResourcesFromFile(t, outputFile)
+		wantIR, err := readGatewayResourcesFromFile(t, outputFile)
 		if err != nil {
-			t.Fatalf("failed to read wantGatewayResources from file %v: %v", outputFile, err.Error())
+			t.Fatalf("failed to read wantIR from file %v: %v", outputFile, err.Error())
 		}
 
-		if !apiequality.Semantic.DeepEqual(gotGatewayResources.Gateways, wantGatewayResources.Gateways) {
-			t.Errorf("Gateways diff for file %v (-want +got): %s", d.Name(), cmp.Diff(wantGatewayResources.Gateways, gotGatewayResources.Gateways))
+		if !apiequality.Semantic.DeepEqual(gotIR.Gateways, wantIR.Gateways) {
+			t.Errorf("Gateways diff for file %v (-want +got): %s", d.Name(), cmp.Diff(wantIR.Gateways, gotIR.Gateways))
 		}
 
-		if !apiequality.Semantic.DeepEqual(gotGatewayResources.HTTPRoutes, wantGatewayResources.HTTPRoutes) {
-			t.Errorf("HTTPRoutes diff for file %v (-want +got): %s", d.Name(), cmp.Diff(wantGatewayResources.HTTPRoutes, gotGatewayResources.HTTPRoutes))
+		if !apiequality.Semantic.DeepEqual(gotIR.HTTPRoutes, wantIR.HTTPRoutes) {
+			t.Errorf("HTTPRoutes diff for file %v (-want +got): %s", d.Name(), cmp.Diff(wantIR.HTTPRoutes, gotIR.HTTPRoutes))
 		}
 
-		if !apiequality.Semantic.DeepEqual(gotGatewayResources.TLSRoutes, wantGatewayResources.TLSRoutes) {
-			t.Errorf("TLSRoutes diff for file %v (-want +got): %s", d.Name(), cmp.Diff(wantGatewayResources.TLSRoutes, gotGatewayResources.TLSRoutes))
+		if !apiequality.Semantic.DeepEqual(gotIR.TLSRoutes, wantIR.TLSRoutes) {
+			t.Errorf("TLSRoutes diff for file %v (-want +got): %s", d.Name(), cmp.Diff(wantIR.TLSRoutes, gotIR.TLSRoutes))
 		}
 
-		if !apiequality.Semantic.DeepEqual(gotGatewayResources.TCPRoutes, wantGatewayResources.TCPRoutes) {
-			t.Errorf("TCPRoutes diff for file %v (-want +got): %s", d.Name(), cmp.Diff(wantGatewayResources.TCPRoutes, gotGatewayResources.TCPRoutes))
+		if !apiequality.Semantic.DeepEqual(gotIR.TCPRoutes, wantIR.TCPRoutes) {
+			t.Errorf("TCPRoutes diff for file %v (-want +got): %s", d.Name(), cmp.Diff(wantIR.TCPRoutes, gotIR.TCPRoutes))
 		}
 
-		if !apiequality.Semantic.DeepEqual(gotGatewayResources.ReferenceGrants, wantGatewayResources.ReferenceGrants) {
-			t.Errorf("ReferenceGrants diff for file %v (-want +got): %s", d.Name(), cmp.Diff(wantGatewayResources.ReferenceGrants, gotGatewayResources.ReferenceGrants))
+		if !apiequality.Semantic.DeepEqual(gotIR.ReferenceGrants, wantIR.ReferenceGrants) {
+			t.Errorf("ReferenceGrants diff for file %v (-want +got): %s", d.Name(), cmp.Diff(wantIR.ReferenceGrants, gotIR.ReferenceGrants))
 		}
 
 		return nil
 	})
 }
 
-func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.GatewayResources, error) {
+func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.IR, error) {
 	t.Helper()
 
 	stream, err := os.ReadFile(filename)
@@ -163,9 +163,9 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.GatewayR
 		return nil, fmt.Errorf("failed to extract objects: %w", err)
 	}
 
-	res := i2gw.GatewayResources{
-		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
-		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
+	res := i2gw.IR{
+		Gateways:        make(map[types.NamespacedName]i2gw.GatewayContext),
+		HTTPRoutes:      make(map[types.NamespacedName]i2gw.HTTPRouteContext),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
@@ -181,7 +181,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.GatewayR
 			res.Gateways[types.NamespacedName{
 				Namespace: gw.Namespace,
 				Name:      gw.Name,
-			}] = gw
+			}] = i2gw.GatewayContext{Gateway: gw}
 		case "HTTPRoute":
 			var httpRoute gatewayv1.HTTPRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &httpRoute); err != nil {
@@ -191,7 +191,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.GatewayR
 			res.HTTPRoutes[types.NamespacedName{
 				Namespace: httpRoute.Namespace,
 				Name:      httpRoute.Name,
-			}] = httpRoute
+			}] = i2gw.HTTPRouteContext{HTTPRoute: httpRoute}
 		case "TLSRoute":
 			var tlsRoute gatewayv1alpha2.TLSRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &tlsRoute); err != nil {

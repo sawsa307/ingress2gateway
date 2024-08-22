@@ -71,7 +71,9 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		errs             field.ErrorList
 	)
 	for _, provider := range providerByName {
-		providerGatewayResources, conversionErrs := provider.ToGatewayAPI()
+		ir, conversionErrs := provider.ToIR()
+		errs = append(errs, conversionErrs...)
+		providerGatewayResources, conversionErrs := provider.ToGatewayResources(ir)
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
@@ -136,8 +138,8 @@ func GetSupportedProviders() []string {
 	return supportedProviders
 }
 
-// MergeGatewayResources accept multiple GatewayResources and create a unique Resource struct
-// built as follows:
+// MergeGatewayIRs accepts multiple IRs and creatse a unique IR struct built
+// as follows:
 //   - GatewayClasses, *Routes, and ReferenceGrants are grouped into the same maps
 //   - Gateways may have the same NamespaceName even if they come from different
 //     ingresses, as they have a their GatewayClass' name as name. For this reason,
@@ -145,44 +147,44 @@ func GetSupportedProviders() []string {
 //     a unique Gateway.
 //
 // This behavior is likely to change after https://github.com/kubernetes-sigs/gateway-api/pull/1863 takes place.
-func MergeGatewayResources(gatewayResources ...GatewayResources) (GatewayResources, field.ErrorList) {
-	mergedGatewayResources := GatewayResources{
-		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
+func MergeIRs(irs ...IR) (IR, field.ErrorList) {
+	mergedIRs := IR{
+		Gateways:        make(map[types.NamespacedName]GatewayContext),
 		GatewayClasses:  make(map[types.NamespacedName]gatewayv1.GatewayClass),
-		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
+		HTTPRoutes:      make(map[types.NamespacedName]HTTPRouteContext),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
 		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}
 	var errs field.ErrorList
-	mergedGatewayResources.Gateways, errs = mergeGateways(gatewayResources)
+	mergedIRs.Gateways, errs = mergeGateways(irs)
 	if len(errs) > 0 {
-		return GatewayResources{}, errs
+		return IR{}, errs
 	}
-	for _, gr := range gatewayResources {
-		maps.Copy(mergedGatewayResources.GatewayClasses, gr.GatewayClasses)
-		maps.Copy(mergedGatewayResources.HTTPRoutes, gr.HTTPRoutes)
-		maps.Copy(mergedGatewayResources.TLSRoutes, gr.TLSRoutes)
-		maps.Copy(mergedGatewayResources.TCPRoutes, gr.TCPRoutes)
-		maps.Copy(mergedGatewayResources.UDPRoutes, gr.UDPRoutes)
-		maps.Copy(mergedGatewayResources.ReferenceGrants, gr.ReferenceGrants)
+	for _, gr := range irs {
+		maps.Copy(mergedIRs.GatewayClasses, gr.GatewayClasses)
+		maps.Copy(mergedIRs.HTTPRoutes, gr.HTTPRoutes)
+		maps.Copy(mergedIRs.TLSRoutes, gr.TLSRoutes)
+		maps.Copy(mergedIRs.TCPRoutes, gr.TCPRoutes)
+		maps.Copy(mergedIRs.UDPRoutes, gr.UDPRoutes)
+		maps.Copy(mergedIRs.ReferenceGrants, gr.ReferenceGrants)
 	}
-	return mergedGatewayResources, errs
+	return mergedIRs, errs
 }
 
-func mergeGateways(gatewaResources []GatewayResources) (map[types.NamespacedName]gatewayv1.Gateway, field.ErrorList) {
-	newGateways := map[types.NamespacedName]gatewayv1.Gateway{}
+func mergeGateways(irs []IR) (map[types.NamespacedName]GatewayContext, field.ErrorList) {
+	newGatewayContexts := make(map[types.NamespacedName]GatewayContext)
 	errs := field.ErrorList{}
 
-	for _, gr := range gatewaResources {
-		for _, g := range gr.Gateways {
-			nn := types.NamespacedName{Namespace: g.Namespace, Name: g.Name}
-			if existingGateway, ok := newGateways[nn]; ok {
-				g.Spec.Listeners = append(g.Spec.Listeners, existingGateway.Spec.Listeners...)
-				g.Spec.Addresses = append(g.Spec.Addresses, existingGateway.Spec.Addresses...)
+	for _, ir := range irs {
+		for _, g := range ir.Gateways {
+			nn := types.NamespacedName{Namespace: g.Gateway.Namespace, Name: g.Gateway.Name}
+			if existingGateway, ok := newGatewayContexts[nn]; ok {
+				g.Gateway.Spec.Listeners = append(g.Gateway.Spec.Listeners, existingGateway.Spec.Listeners...)
+				g.Gateway.Spec.Addresses = append(g.Gateway.Spec.Addresses, existingGateway.Spec.Addresses...)
 			}
-			newGateways[nn] = g
+			newGatewayContexts[nn] = GatewayContext{Gateway: g.Gateway}
 			// 64 is the maximum number of listeners a Gateway can have
 			if len(g.Spec.Listeners) > 64 {
 				fieldPath := field.NewPath(fmt.Sprintf("%s/%s", nn.Namespace, nn.Name)).Child("spec").Child("listeners")
@@ -196,5 +198,5 @@ func mergeGateways(gatewaResources []GatewayResources) (map[types.NamespacedName
 		}
 	}
 
-	return newGateways, errs
+	return newGatewayContexts, errs
 }

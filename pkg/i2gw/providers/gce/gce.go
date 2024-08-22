@@ -32,16 +32,18 @@ func init() {
 
 // Provider implements the i2gw.Provider interface.
 type Provider struct {
-	storage   *storage
-	reader    reader
-	converter converter
+	storage                *storage
+	reader                 reader
+	resourcesToIRConverter resourcesToIRConverter
+	extConverter           extensionConverter
 }
 
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
-		storage:   newResourcesStorage(),
-		reader:    newResourceReader(conf),
-		converter: newConverter(conf),
+		storage:                newResourcesStorage(),
+		reader:                 newResourceReader(conf),
+		resourcesToIRConverter: newResourcesToIRConverter(conf),
+		extConverter:           *newExtensionConverter(),
 	}
 }
 
@@ -64,8 +66,12 @@ func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) err
 	return nil
 }
 
-// ToGatewayAPI converts stored Ingress GCE API entities to
-// i2gw.GatewayResources including the ingress-gce specific features.
-func (p *Provider) ToGatewayAPI() (i2gw.GatewayResources, field.ErrorList) {
-	return p.converter.convert(p.storage)
+// ToIR converts stored Ingress GCE API entities to i2gw.IR including the
+// ingress-gce specific features.
+func (p *Provider) ToIR() (i2gw.IR, field.ErrorList) {
+	return p.resourcesToIRConverter.convertToIR(p.storage)
+}
+
+func (p *Provider) ToGatewayResources(ir i2gw.IR) (i2gw.GatewayResources, field.ErrorList) {
+	return p.extConverter.irToGateway(ir)
 }
