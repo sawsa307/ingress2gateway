@@ -24,19 +24,24 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/ingress-gce/pkg/annotations"
+	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
+
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func Test_ToIR(t *testing.T) {
 	testNamespace := "default"
 	testHost := "test.mydomain.com"
-	testBackendServiceName := "test"
+	testServiceName := "test-service"
+	testBackendConfigName := "test-backendconfig"
 	iPrefix := networkingv1.PathTypePrefix
 	implSpecificPathType := networkingv1.PathTypeImplementationSpecific
 
@@ -47,9 +52,15 @@ func Test_ToIR(t *testing.T) {
 	intIngClassIngressName := "gce-internal-ingress-class"
 	noIngClassIngressName := "no-ingress-class"
 
+	saTypeClientIP := "CLIENT_IP"
+	testCookieTTLSec := int64(10)
+	saTypeCookie := "GENERATED_COOKIE"
+
 	testCases := []struct {
 		name           string
 		ingresses      map[types.NamespacedName]*networkingv1.Ingress
+		services       map[types.NamespacedName]*apiv1.Service
+		backendConfigs map[types.NamespacedName]*backendconfigv1.BackendConfig
 		expectedIR     i2gw.IR
 		expectedErrors field.ErrorList
 	}{
@@ -72,7 +83,7 @@ func Test_ToIR(t *testing.T) {
 										PathType: &iPrefix,
 										Backend: networkingv1.IngressBackend{
 											Service: &networkingv1.IngressServiceBackend{
-												Name: testBackendServiceName,
+												Name: testServiceName,
 												Port: networkingv1.ServiceBackendPort{
 													Number: 80,
 												},
@@ -82,6 +93,14 @@ func Test_ToIR(t *testing.T) {
 								},
 							},
 						}},
+					},
+				},
+			},
+			services: map[types.NamespacedName]*apiv1.Service{
+				{Namespace: testNamespace, Name: testServiceName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testServiceName,
 					},
 				},
 			},
@@ -126,7 +145,7 @@ func Test_ToIR(t *testing.T) {
 											{
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
-														Name: gatewayv1.ObjectName(testBackendServiceName),
+														Name: gatewayv1.ObjectName(testServiceName),
 														Port: ptrTo(gatewayv1.PortNumber(80)),
 													},
 												},
@@ -160,7 +179,7 @@ func Test_ToIR(t *testing.T) {
 										PathType: &iPrefix,
 										Backend: networkingv1.IngressBackend{
 											Service: &networkingv1.IngressServiceBackend{
-												Name: testBackendServiceName,
+												Name: testServiceName,
 												Port: networkingv1.ServiceBackendPort{
 													Number: 80,
 												},
@@ -170,6 +189,14 @@ func Test_ToIR(t *testing.T) {
 								},
 							},
 						}},
+					},
+				},
+			},
+			services: map[types.NamespacedName]*apiv1.Service{
+				{Namespace: testNamespace, Name: testServiceName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testServiceName,
 					},
 				},
 			},
@@ -215,7 +242,7 @@ func Test_ToIR(t *testing.T) {
 											{
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
-														Name: gatewayv1.ObjectName(testBackendServiceName),
+														Name: gatewayv1.ObjectName(testServiceName),
 														Port: ptrTo(gatewayv1.PortNumber(80)),
 													},
 												},
@@ -248,7 +275,7 @@ func Test_ToIR(t *testing.T) {
 										PathType: &iPrefix,
 										Backend: networkingv1.IngressBackend{
 											Service: &networkingv1.IngressServiceBackend{
-												Name: testBackendServiceName,
+												Name: testServiceName,
 												Port: networkingv1.ServiceBackendPort{
 													Number: 80,
 												},
@@ -258,6 +285,14 @@ func Test_ToIR(t *testing.T) {
 								},
 							},
 						}},
+					},
+				},
+			},
+			services: map[types.NamespacedName]*apiv1.Service{
+				{Namespace: testNamespace, Name: testServiceName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testServiceName,
 					},
 				},
 			},
@@ -303,7 +338,7 @@ func Test_ToIR(t *testing.T) {
 											{
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
-														Name: gatewayv1.ObjectName(testBackendServiceName),
+														Name: gatewayv1.ObjectName(testServiceName),
 														Port: ptrTo(gatewayv1.PortNumber(80)),
 													},
 												},
@@ -337,7 +372,7 @@ func Test_ToIR(t *testing.T) {
 										PathType: &implSpecificPathType,
 										Backend: networkingv1.IngressBackend{
 											Service: &networkingv1.IngressServiceBackend{
-												Name: testBackendServiceName,
+												Name: testServiceName,
 												Port: networkingv1.ServiceBackendPort{
 													Number: 80,
 												},
@@ -347,6 +382,14 @@ func Test_ToIR(t *testing.T) {
 								},
 							},
 						}},
+					},
+				},
+			},
+			services: map[types.NamespacedName]*apiv1.Service{
+				{Namespace: testNamespace, Name: testServiceName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testServiceName,
 					},
 				},
 			},
@@ -392,7 +435,7 @@ func Test_ToIR(t *testing.T) {
 											{
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
-														Name: gatewayv1.ObjectName(testBackendServiceName),
+														Name: gatewayv1.ObjectName(testServiceName),
 														Port: ptrTo(gatewayv1.PortNumber(80)),
 													},
 												},
@@ -426,7 +469,7 @@ func Test_ToIR(t *testing.T) {
 										PathType: &implSpecificPathType,
 										Backend: networkingv1.IngressBackend{
 											Service: &networkingv1.IngressServiceBackend{
-												Name: testBackendServiceName,
+												Name: testServiceName,
 												Port: networkingv1.ServiceBackendPort{
 													Number: 80,
 												},
@@ -436,6 +479,14 @@ func Test_ToIR(t *testing.T) {
 								},
 							},
 						}},
+					},
+				},
+			},
+			services: map[types.NamespacedName]*apiv1.Service{
+				{Namespace: testNamespace, Name: testServiceName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testServiceName,
 					},
 				},
 			},
@@ -481,7 +532,7 @@ func Test_ToIR(t *testing.T) {
 											{
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
-														Name: gatewayv1.ObjectName(testBackendServiceName),
+														Name: gatewayv1.ObjectName(testServiceName),
 														Port: ptrTo(gatewayv1.PortNumber(80)),
 													},
 												},
@@ -515,7 +566,7 @@ func Test_ToIR(t *testing.T) {
 										PathType: &implSpecificPathType,
 										Backend: networkingv1.IngressBackend{
 											Service: &networkingv1.IngressServiceBackend{
-												Name: testBackendServiceName,
+												Name: testServiceName,
 												Port: networkingv1.ServiceBackendPort{
 													Number: 80,
 												},
@@ -525,6 +576,14 @@ func Test_ToIR(t *testing.T) {
 								},
 							},
 						}},
+					},
+				},
+			},
+			services: map[types.NamespacedName]*apiv1.Service{
+				{Namespace: testNamespace, Name: testServiceName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testServiceName,
 					},
 				},
 			},
@@ -570,7 +629,7 @@ func Test_ToIR(t *testing.T) {
 											{
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
-														Name: gatewayv1.ObjectName(testBackendServiceName),
+														Name: gatewayv1.ObjectName(testServiceName),
 														Port: ptrTo(gatewayv1.PortNumber(80)),
 													},
 												},
@@ -578,6 +637,252 @@ func Test_ToIR(t *testing.T) {
 										},
 									},
 								},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "ingress with a Backend Config specifying CLIENT_IP type session affinity config",
+			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
+				{Namespace: testNamespace, Name: extIngClassIngressName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        extIngClassIngressName,
+						Namespace:   testNamespace,
+						Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass},
+					},
+					Spec: networkingv1.IngressSpec{
+						Rules: []networkingv1.IngressRule{{
+							Host: testHost,
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/",
+										PathType: &iPrefix,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: testServiceName,
+												Port: networkingv1.ServiceBackendPort{
+													Number: 80,
+												},
+											},
+										},
+									}},
+								},
+							},
+						}},
+					},
+				},
+			},
+			services: map[types.NamespacedName]*apiv1.Service{
+				{Namespace: testNamespace, Name: testServiceName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testServiceName,
+						Annotations: map[string]string{
+							annotations.BackendConfigKey: `{"default":"test-backendconfig"}`,
+						},
+					},
+				},
+			},
+			backendConfigs: map[types.NamespacedName]*backendconfigv1.BackendConfig{
+				{Namespace: testNamespace, Name: testBackendConfigName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testBackendConfigName,
+					},
+					Spec: backendconfigv1.BackendConfigSpec{
+						SessionAffinity: &backendconfigv1.SessionAffinityConfig{
+							AffinityType: saTypeClientIP,
+						},
+					},
+				},
+			},
+			expectedIR: i2gw.IR{
+				Gateways: map[types.NamespacedName]i2gw.GatewayContext{
+					{Namespace: testNamespace, Name: gceIngressClass}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]i2gw.HTTPRouteContext{
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  &gPathPrefix,
+													Value: ptrTo("/"),
+												},
+											},
+										},
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testServiceName),
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				Services: map[types.NamespacedName]*i2gw.ServiceIR{
+					{Namespace: testNamespace, Name: testServiceName}: {
+						Gce: &i2gw.GceServiceIR{
+							SessionAffinity: &i2gw.SessionAffinityConfig{
+								AffinityType: saTypeClientIP,
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "ingress with a Backend Config specifying GENERATED_COOKIE type session affinity config",
+			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
+				{Namespace: testNamespace, Name: extIngClassIngressName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        extIngClassIngressName,
+						Namespace:   testNamespace,
+						Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass},
+					},
+					Spec: networkingv1.IngressSpec{
+						Rules: []networkingv1.IngressRule{{
+							Host: testHost,
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/",
+										PathType: &iPrefix,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: testServiceName,
+												Port: networkingv1.ServiceBackendPort{
+													Number: 80,
+												},
+											},
+										},
+									}},
+								},
+							},
+						}},
+					},
+				},
+			},
+			services: map[types.NamespacedName]*apiv1.Service{
+				{Namespace: testNamespace, Name: testServiceName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testServiceName,
+						Annotations: map[string]string{
+							annotations.BackendConfigKey: `{"default":"test-backendconfig"}`,
+						},
+					},
+				},
+			},
+			backendConfigs: map[types.NamespacedName]*backendconfigv1.BackendConfig{
+				{Namespace: testNamespace, Name: testBackendConfigName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testBackendConfigName,
+					},
+					Spec: backendconfigv1.BackendConfigSpec{
+						SessionAffinity: &backendconfigv1.SessionAffinityConfig{
+							AffinityType:         saTypeCookie,
+							AffinityCookieTtlSec: &testCookieTTLSec,
+						},
+					},
+				},
+			},
+			expectedIR: i2gw.IR{
+				Gateways: map[types.NamespacedName]i2gw.GatewayContext{
+					{Namespace: testNamespace, Name: gceIngressClass}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]i2gw.HTTPRouteContext{
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  &gPathPrefix,
+													Value: ptrTo("/"),
+												},
+											},
+										},
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testServiceName),
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				Services: map[types.NamespacedName]*i2gw.ServiceIR{
+					{Namespace: testNamespace, Name: testServiceName}: {
+						Gce: &i2gw.GceServiceIR{
+							SessionAffinity: &i2gw.SessionAffinityConfig{
+								AffinityType: saTypeCookie,
+								CookieTTLSec: &testCookieTTLSec,
 							},
 						},
 					},
@@ -594,6 +899,8 @@ func Test_ToIR(t *testing.T) {
 			gceProvider := provider.(*Provider)
 			gceProvider.storage = newResourcesStorage()
 			gceProvider.storage.Ingresses = tc.ingresses
+			gceProvider.storage.Services = tc.services
+			gceProvider.storage.BackendConfigs = tc.backendConfigs
 
 			// TODO(#113) we pass an empty i2gw.InputResources temporarily until we change ToIR function on the interface
 			ir, errs := provider.ToIR()
@@ -636,6 +943,18 @@ func Test_ToIR(t *testing.T) {
 				}
 			}
 
+			if len(ir.Services) != len(tc.expectedIR.Services) {
+				t.Errorf("Expected %d ServiceIR, got %d: %+v",
+					len(tc.expectedIR.Services), len(ir.Services), ir.Services)
+			} else {
+				for svcKey, gotServiceIR := range ir.Services {
+					key := types.NamespacedName{Namespace: svcKey.Namespace, Name: svcKey.Name}
+					wantServiceIR := tc.expectedIR.Services[key]
+					if !apiequality.Semantic.DeepEqual(gotServiceIR, wantServiceIR) {
+						t.Errorf("Expected ServiceIR %s to be %+v\n Got: %+v\n Diff: %s", svcKey, wantServiceIR, gotServiceIR, cmp.Diff(wantServiceIR, gotServiceIR))
+					}
+				}
+			}
 		})
 	}
 }

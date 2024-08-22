@@ -22,13 +22,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-type extensionConverter struct{}
+type irToGatewayResourcesConverter struct{}
 
-// newExtensionConverter returns an gce extension converter instance.
-func newExtensionConverter() *extensionConverter {
-	return &extensionConverter{}
+// newIRToGatewayResourcesConverter returns an gce irToGatewayResourcesConverter instance.
+func newIRToGatewayResourcesConverter() irToGatewayResourcesConverter {
+	return irToGatewayResourcesConverter{}
 }
 
-func (c *extensionConverter) irToGateway(ir i2gw.IR) (i2gw.GatewayResources, field.ErrorList) {
-	return common.ToGatewayResources(ir)
+func (c *irToGatewayResourcesConverter) irToGateway(ir i2gw.IR) (i2gw.GatewayResources, field.ErrorList) {
+	gatewayResources, errs := common.ToGatewayResources(ir)
+	if len(errs) != 0 {
+		return i2gw.GatewayResources{}, errs
+	}
+	buildGceServiceExtensions(ir, &gatewayResources)
+	return gatewayResources, nil
 }

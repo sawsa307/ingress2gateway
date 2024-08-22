@@ -17,11 +17,19 @@ limitations under the License.
 package gce
 
 import (
+	"context"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+)
+
+type contextKey int
+
+const (
+	serviceKey contextKey = iota
 )
 
 // resourcesToIRConverter implements the ToIR function of i2gw.ResourcesToIRConverter interface.
@@ -30,9 +38,10 @@ type resourcesToIRConverter struct {
 
 	featureParsers                []i2gw.FeatureParser
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
+	ctx                           context.Context
 }
 
-// newResourcesToIRConverter returns an ingress-gce resourcesToIRConverter instance.
+// newResourcesToIRConverter returns an ingress-gce irConverter instance.
 func newResourcesToIRConverter(conf *i2gw.ProviderConf) resourcesToIRConverter {
 	return resourcesToIRConverter{
 		conf:           conf,
@@ -40,6 +49,7 @@ func newResourcesToIRConverter(conf *i2gw.ProviderConf) resourcesToIRConverter {
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
 			ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
 		},
+		ctx: context.Background(),
 	}
 }
 
@@ -73,5 +83,6 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (i2gw.IR, field.E
 		// Append the parsing errors to the error list.
 		errs = append(errs, parseErrs...)
 	}
+	buildGceServiceIR(c.ctx, storage, &ir)
 	return ir, errs
 }

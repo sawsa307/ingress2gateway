@@ -178,7 +178,13 @@ type ApisixServiceIR struct{}
 
 type GceGatewayIR struct{}
 type GceHTTPRouteIR struct{}
-type GceServiceIR struct{}
+type GceServiceIR struct {
+	SessionAffinity *SessionAffinityConfig
+}
+type SessionAffinityConfig struct {
+	AffinityType string
+	CookieTTLSec *int64
+}
 
 type IngressNginxGatewayIR struct{}
 type IngressNginxHTTPRouteIR struct{}

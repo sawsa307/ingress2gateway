@@ -16,6 +16,8 @@ limitations under the License.
 
 package gce
 
+import "k8s.io/apimachinery/pkg/runtime/schema"
+
 const (
 	gceIngressClass      = "gce"
 	gceL7ILBIngressClass = "gce-internal"
@@ -23,3 +25,9 @@ const (
 	gceL7GlobalExternalManagedGatewayClass = "gke-l7-global-external-managed"
 	gceL7RegionalInternalGatewayClass      = "gke-l7-rilb"
 )
+
+var GCPBackendPolicyGVK = schema.GroupVersionKind{
+	Group:   "networking.gke.io",
+	Version: "v1",
+	Kind:    "GCPBackendPolicy",
+}

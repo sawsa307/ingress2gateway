@@ -21,7 +21,10 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
+	backendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1beta1"
 )
 
 const ProviderName = "gce"
@@ -32,18 +35,28 @@ func init() {
 
 // Provider implements the i2gw.Provider interface.
 type Provider struct {
-	storage                *storage
-	reader                 reader
-	resourcesToIRConverter resourcesToIRConverter
-	extConverter           extensionConverter
+	storage                       *storage
+	reader                        reader
+	resourcesToIRConverter        resourcesToIRConverter
+	irToGatewayResourcesConverter irToGatewayResourcesConverter
 }
 
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+	// Add BackendConfig and FrontendConfig to Schema when reading in-cluster
+	// so these resources can be recognized.
+	if conf.Client != nil {
+		if err := backendconfigv1.AddToScheme(conf.Client.Scheme()); err != nil {
+			notify(notifications.ErrorNotification, "Failed to add v1 BackendConfig Scheme")
+		}
+		if err := backendconfigv1beta1.AddToScheme(conf.Client.Scheme()); err != nil {
+			notify(notifications.ErrorNotification, "Failed to add v1beta1 BackendConfig Scheme")
+		}
+	}
 	return &Provider{
-		storage:                newResourcesStorage(),
-		reader:                 newResourceReader(conf),
-		resourcesToIRConverter: newResourcesToIRConverter(conf),
-		extConverter:           *newExtensionConverter(),
+		storage:                       newResourcesStorage(),
+		reader:                        newResourceReader(conf),
+		resourcesToIRConverter:        newResourcesToIRConverter(conf),
+		irToGatewayResourcesConverter: newIRToGatewayResourcesConverter(),
 	}
 }
 
@@ -73,5 +86,5 @@ func (p *Provider) ToIR() (i2gw.IR, field.ErrorList) {
 }
 
 func (p *Provider) ToGatewayResources(ir i2gw.IR) (i2gw.GatewayResources, field.ErrorList) {
-	return p.extConverter.irToGateway(ir)
+	return p.irToGatewayResourcesConverter.irToGateway(ir)
 }

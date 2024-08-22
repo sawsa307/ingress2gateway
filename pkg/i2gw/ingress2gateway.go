@@ -22,6 +22,8 @@ import (
 	"maps"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -199,4 +201,14 @@ func mergeGateways(irs []IR) (map[types.NamespacedName]GatewayContext, field.Err
 	}
 
 	return newGatewayContexts, errs
+}
+
+func CastToUnstructured(obj runtime.Object) (*unstructured.Unstructured, error) {
+	// Convert the Kubernetes object to unstructured.Unstructured
+	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return &unstructured.Unstructured{Object: unstructuredObj}, nil
 }
