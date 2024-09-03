@@ -22,6 +22,7 @@ import (
 
 	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/ir"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -142,13 +143,13 @@ func buildGceServiceIR(ctx context.Context, storage *storage, ir *i2gw.IR) {
 	}
 }
 
-func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) *i2gw.GceServiceIR {
+func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) *ir.GceServiceIR {
 	if beConfig == nil {
 		return nil
 	}
-	var gceServiceIR i2gw.GceServiceIR
+	var gceServiceIR ir.GceServiceIR
 	if beConfig.Spec.SessionAffinity != nil {
-		saConfig := i2gw.SessionAffinityConfig{
+		saConfig := ir.SessionAffinityConfig{
 			AffinityType: beConfig.Spec.SessionAffinity.AffinityType,
 			CookieTTLSec: beConfig.Spec.SessionAffinity.AffinityCookieTtlSec,
 		}
@@ -158,13 +159,13 @@ func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) *i2gw.GceSe
 	return &gceServiceIR
 }
 
-func betaBeConfigToGceServiceIR(betaBeConfig *backendconfigv1beta1.BackendConfig) *i2gw.GceServiceIR {
+func betaBeConfigToGceServiceIR(betaBeConfig *backendconfigv1beta1.BackendConfig) *ir.GceServiceIR {
 	if betaBeConfig == nil {
 		return nil
 	}
-	var gceServiceIR i2gw.GceServiceIR
+	var gceServiceIR ir.GceServiceIR
 	if betaBeConfig.Spec.SessionAffinity != nil {
-		saConfig := i2gw.SessionAffinityConfig{
+		saConfig := ir.SessionAffinityConfig{
 			AffinityType: betaBeConfig.Spec.SessionAffinity.AffinityType,
 			CookieTTLSec: betaBeConfig.Spec.SessionAffinity.AffinityCookieTtlSec,
 		}

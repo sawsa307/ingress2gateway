@@ -23,6 +23,7 @@ import (
 	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/ir"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -163,8 +164,8 @@ func Test_ToGatewayResources(t *testing.T) {
 				},
 				Services: map[types.NamespacedName]*i2gw.ServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &i2gw.GceServiceIR{
-							SessionAffinity: &i2gw.SessionAffinityConfig{
+						Gce: &ir.GceServiceIR{
+							SessionAffinity: &ir.SessionAffinityConfig{
 								AffinityType: saTypeClientIP,
 							},
 						},
@@ -199,8 +200,8 @@ func Test_ToGatewayResources(t *testing.T) {
 				},
 				Services: map[types.NamespacedName]*i2gw.ServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &i2gw.GceServiceIR{
-							SessionAffinity: &i2gw.SessionAffinityConfig{
+						Gce: &ir.GceServiceIR{
+							SessionAffinity: &ir.SessionAffinityConfig{
 								AffinityType: saTypeCookie,
 								CookieTTLSec: &testCookieTTLSec,
 							},

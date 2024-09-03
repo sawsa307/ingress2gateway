@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/ir"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -756,8 +757,8 @@ func Test_ToIR(t *testing.T) {
 				},
 				Services: map[types.NamespacedName]*i2gw.ServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &i2gw.GceServiceIR{
-							SessionAffinity: &i2gw.SessionAffinityConfig{
+						Gce: &ir.GceServiceIR{
+							SessionAffinity: &ir.SessionAffinityConfig{
 								AffinityType: saTypeClientIP,
 							},
 						},
@@ -879,8 +880,8 @@ func Test_ToIR(t *testing.T) {
 				},
 				Services: map[types.NamespacedName]*i2gw.ServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &i2gw.GceServiceIR{
-							SessionAffinity: &i2gw.SessionAffinityConfig{
+						Gce: &ir.GceServiceIR{
+							SessionAffinity: &ir.SessionAffinityConfig{
 								AffinityType: saTypeCookie,
 								CookieTTLSec: &testCookieTTLSec,
 							},

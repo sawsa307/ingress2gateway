@@ -20,6 +20,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/ir"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -137,12 +138,12 @@ type IR struct {
 type GatewayContext struct {
 	gatewayv1.Gateway
 
-	Apisix       *ApisixGatewayIR
-	GCE          *GceGatewayIR
-	IngressNginx *IngressNginxGatewayIR
-	Istio        *IstioGatewayIR
-	Kong         *KongGatewayIR
-	Openapi3     *Openapi3GatewayIR
+	Apisix       *ir.ApisixGatewayIR
+	GCE          *ir.GceGatewayIR
+	IngressNginx *ir.IngressNginxGatewayIR
+	Istio        *ir.IstioGatewayIR
+	Kong         *ir.KongGatewayIR
+	Openapi3     *ir.Openapi3GatewayIR
 }
 
 // HTTPRouteContext contains the Gateway-API HTTPRoute object, along with a
@@ -153,54 +154,24 @@ type GatewayContext struct {
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
 
-	Apisix       *ApisixHTTPRouteIR
-	Gce          *GceHTTPRouteIR
-	IngressNginx *IngressNginxHTTPRouteIR
-	Istio        *IstioHTTPRouteIR
-	Kong         *KongHTTPRouteIR
-	Openapi3     *Openapi3HTTPRouteIR
+	Apisix       *ir.ApisixHTTPRouteIR
+	Gce          *ir.GceHTTPRouteIR
+	IngressNginx *ir.IngressNginxHTTPRouteIR
+	Istio        *ir.IstioHTTPRouteIR
+	Kong         *ir.KongHTTPRouteIR
+	Openapi3     *ir.Openapi3HTTPRouteIR
 }
 
 // ServiceIR contains a dedicated field for each provider to specify their
 // extension features on Service.
 type ServiceIR struct {
-	Apisix       *ApisixServiceIR
-	Gce          *GceServiceIR
-	IngressNginx *IngressNginxServiceIR
-	Istio        *IstioServiceIR
-	Kong         *KongServiceIR
-	Openapi3     *Openapi3ServiceIR
+	Apisix       *ir.ApisixServiceIR
+	Gce          *ir.GceServiceIR
+	IngressNginx *ir.IngressNginxServiceIR
+	Istio        *ir.IstioServiceIR
+	Kong         *ir.KongServiceIR
+	Openapi3     *ir.Openapi3ServiceIR
 }
-
-type ApisixGatewayIR struct{}
-type ApisixHTTPRouteIR struct{}
-type ApisixServiceIR struct{}
-
-type GceGatewayIR struct{}
-type GceHTTPRouteIR struct{}
-type GceServiceIR struct {
-	SessionAffinity *SessionAffinityConfig
-}
-type SessionAffinityConfig struct {
-	AffinityType string
-	CookieTTLSec *int64
-}
-
-type IngressNginxGatewayIR struct{}
-type IngressNginxHTTPRouteIR struct{}
-type IngressNginxServiceIR struct{}
-
-type IstioGatewayIR struct{}
-type IstioHTTPRouteIR struct{}
-type IstioServiceIR struct{}
-
-type KongGatewayIR struct{}
-type KongHTTPRouteIR struct{}
-type KongServiceIR struct{}
-
-type Openapi3GatewayIR struct{}
-type Openapi3HTTPRouteIR struct{}
-type Openapi3ServiceIR struct{}
 
 // FeatureParser is a function that reads the Ingresses, and applies
 // the appropriate modifications to the GatewayResources.
